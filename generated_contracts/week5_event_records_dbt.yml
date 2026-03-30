@@ -1,0 +1,46 @@
+version: 2
+models:
+- name: week5_event_records
+  columns:
+  - name: event_id
+    tests:
+    - not_null
+    - unique
+  - name: event_type
+    tests:
+    - not_null
+  - name: aggregate_id
+    tests:
+    - not_null
+    - unique
+  - name: aggregate_type
+    tests:
+    - not_null
+  - name: sequence_number
+    tests:
+    - not_null
+  - name: schema_version
+    tests:
+    - not_null
+  - name: occurred_at
+    tests:
+    - not_null
+  - name: recorded_at
+    tests:
+    - not_null
+  - name: meta_causation_id
+    tests:
+    - accepted_values:
+        values: []
+    - unique
+  - name: meta_correlation_id
+    tests:
+    - not_null
+    - unique
+  - name: meta_user_id
+    tests:
+    - not_null
+    - unique
+  - name: meta_source_service
+    tests:
+    - not_null

@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-30T19:40:26.706581Z",
+  "period": "2026-03-23 to 2026-03-30",
+  "data_health_score": 70,
+  "health_narrative": "Score of 70/100. 1 critical issues require immediate action.",
+  "top_violations": [
+    "The fact_confidence field in week3-document-refinery-extractions failed its range check. Expected min>=0.0, max<=1.0 but found min=70.0000, max=98.0000, mean=84.3029. This affects 274 records.",
+    "The fact_confidence field in week3-document-refinery-extractions failed its statistical_drift check. Expected mean=0.8430 \u00b1 0.0815 but found mean=84.3029, z_score=1023.69. This affects 0 records."
+  ],
+  "total_violations_by_severity": {
+    "CRITICAL": 1,
+    "HIGH": 1,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "violation_count": 3,
+  "schema_changes_summary": "3 schema changes detected. 3 breaking, 0 compatible. Verdict: BREAKING",
+  "ai_system_risk_assessment": "Embedding drift: BASELINE_SET (score=0.0); Prompt validation: PASS (55/55 valid); LLM output violations: PASS (rate=0.0, trend=stable)",
+  "recommendations": [
+    "Update source pipeline to output fact_confidence as float 0.0-1.0 per contract clause week3-document-refinery-extractions.fact_confidence.range",
+    "Investigate statistical drift in fact_confidence. Re-establish baseline after confirming data correctness.",
+    "Add contract enforcement step to CI pipeline to prevent future CRITICAL violations.",
+    "Review schema evolution snapshots weekly to catch breaking changes early."
+  ],
+  "reports_analyzed": 2,
+  "total_checks_run": 57,
+  "total_passed": 55,
+  "total_failed": 2
+}

@@ -1,0 +1,31 @@
+{
+  "run_id": "ab0a4bab-9eb1-4b77-98f7-5d44f00ee4f4",
+  "run_date": "2026-03-30T19:36:36.418640Z",
+  "checks": [
+    {
+      "check": "embedding_drift",
+      "status": "BASELINE_SET",
+      "drift_score": 0.0,
+      "threshold": 0.15,
+      "interpretation": "Baseline established. First run \u2014 no drift to compare."
+    },
+    {
+      "check": "prompt_input_validation",
+      "total_records": 55,
+      "valid": 55,
+      "quarantined": 0,
+      "status": "PASS",
+      "quarantine_rate": 0.0,
+      "sample_errors": []
+    },
+    {
+      "check": "llm_output_schema_violation_rate",
+      "total_outputs": 60,
+      "schema_violations": 0,
+      "violation_rate": 0.0,
+      "trend": "stable",
+      "baseline_rate": 0.01,
+      "status": "PASS"
+    }
+  ]
+}
