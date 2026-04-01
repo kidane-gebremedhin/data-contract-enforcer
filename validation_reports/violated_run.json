@@ -1,10 +1,10 @@
 {
-  "report_id": "f6e51907-594a-4c6b-984b-24a5d34288f5",
+  "report_id": "28230946-21dd-4b78-a695-bb66bfe6a930",
   "contract_id": "week3-document-refinery-extractions",
-  "snapshot_id": "eb15cf9f0394f726bdc961abf36627868bc9b74d513c7943ac530fde00bf1811",
-  "run_timestamp": "2026-03-30T19:36:35.315878Z",
-  "total_checks": 30,
-  "passed": 28,
+  "snapshot_id": "ccf359354719974c79cba415e442ec53d92322bf4f205617723d1855f59fbe7b",
+  "run_timestamp": "2026-03-31T15:20:03.045262Z",
+  "total_checks": 31,
+  "passed": 29,
   "failed": 2,
   "warned": 0,
   "errored": 0,
@@ -27,11 +27,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.doc_id.pattern",
@@ -63,11 +63,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.source_hash.required",
@@ -87,11 +87,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.source_hash.pattern",
@@ -123,11 +123,23 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
+    },
+    {
+      "check_id": "week3-document-refinery-extractions.extraction_model.enum",
+      "column_name": "extraction_model",
+      "check_type": "enum",
+      "status": "PASS",
+      "severity": "LOW",
+      "actual_value": "0 non-conforming values",
+      "expected": "one of ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']",
+      "records_failing": 0,
+      "sample_failing": [],
+      "message": "All values conform to enum."
     },
     {
       "check_id": "week3-document-refinery-extractions.processing_time_ms.required",
@@ -171,11 +183,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.extracted_at.datetime",
@@ -207,11 +219,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.fact_fact_id.pattern",
@@ -243,11 +255,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.fact_confidence.required",
@@ -333,11 +345,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.processing_time_ms.statistical_drift",

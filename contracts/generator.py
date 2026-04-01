@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+from ydata_profiling import ProfileReport
 
 
 # ── Stage 1: Load and profile data ─────────────────────────────────────
@@ -77,24 +78,45 @@ def flatten_for_profile(records):
 
 # ── Stage 2: Structural profiling per column ────────────────────────────
 
-def profile_column(series, col_name):
+def run_ydata_profile(df):
+    """Run ydata-profiling and return the description dict."""
+    report = ProfileReport(df, minimal=True, title="ContractGenerator Profile")
+    return report.get_description()
+
+
+def profile_column(series, col_name, ydata_vars=None):
+    """Profile a single column, enriched with ydata-profiling stats when available."""
     result = {
         "name": col_name,
         "dtype": str(series.dtype),
         "null_fraction": float(series.isna().mean()),
         "cardinality_estimate": int(series.nunique()),
-        "sample_values": [str(v) for v in series.dropna().unique()[:5]],
+        "sample_values": [str(v) for v in series.dropna().unique()[:50]],
     }
+
+    # Enrich with ydata-profiling variable description if available
+    if ydata_vars and col_name in ydata_vars:
+        var_desc = ydata_vars[col_name]
+        result["ydata_type"] = str(var_desc.get("type", ""))
+
     if pd.api.types.is_numeric_dtype(series):
         s = series.dropna()
         if len(s) > 0:
-            result["stats"] = {
+            stats = {
                 "min": float(s.min()), "max": float(s.max()),
                 "mean": float(s.mean()), "p25": float(s.quantile(0.25)),
                 "p50": float(s.quantile(0.50)), "p75": float(s.quantile(0.75)),
                 "p95": float(s.quantile(0.95)), "p99": float(s.quantile(0.99)),
                 "stddev": float(s.std()) if len(s) > 1 else 0.0
             }
+            # Enrich with ydata stats if available
+            if ydata_vars and col_name in ydata_vars:
+                yd = ydata_vars[col_name]
+                if "kurtosis" in yd:
+                    stats["kurtosis"] = float(yd["kurtosis"])
+                if "skewness" in yd:
+                    stats["skewness"] = float(yd["skewness"])
+            result["stats"] = stats
     return result
 
 
@@ -145,7 +167,7 @@ def column_to_clause(profile):
         clause["description"] = "SHA-256 hash."
 
     # Enum fields (low cardinality strings)
-    if (profile["cardinality_estimate"] <= 10
+    if (profile["cardinality_estimate"] <= 50
             and profile["dtype"] == "object"
             and len(profile["sample_values"]) == profile["cardinality_estimate"]):
         clause["enum"] = profile["sample_values"]
@@ -318,12 +340,17 @@ def main():
     print(f"\n  dtypes:\n{df.dtypes.to_string()}")
     print(f"\n  describe:\n{df.describe().to_string()}")
 
-    # Stage 2: Profile each column
-    print(f"\nStage 2: Profiling columns...")
-    column_profiles = {col: profile_column(df[col], col) for col in df.columns}
+    # Stage 2: Profile each column (enhanced with ydata-profiling)
+    print(f"\nStage 2: Profiling columns with ydata-profiling...")
+    ydata_desc = run_ydata_profile(df)
+    ydata_vars = ydata_desc.variables if hasattr(ydata_desc, "variables") else {}
+    print(f"  ydata-profiling: {len(ydata_vars)} variables analyzed")
+
+    column_profiles = {col: profile_column(df[col], col, ydata_vars) for col in df.columns}
     for col, p in column_profiles.items():
         status = "required" if p["null_fraction"] == 0.0 else f"nullable ({p['null_fraction']:.1%} null)"
-        print(f"  {col}: {p['dtype']} — {status}, cardinality={p['cardinality_estimate']}")
+        yd_type = f", ydata_type={p['ydata_type']}" if "ydata_type" in p else ""
+        print(f"  {col}: {p['dtype']} — {status}, cardinality={p['cardinality_estimate']}{yd_type}")
 
     # Stage 3: Build contract
     print(f"\nStage 3: Generating Bitol YAML contract...")

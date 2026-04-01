@@ -16,12 +16,21 @@ models:
   - name: aggregate_type
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - LoanApplication
+        - Document
+        - AgentSession
   - name: sequence_number
     tests:
     - not_null
   - name: schema_version
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - '1'
+        - '2'
   - name: occurred_at
     tests:
     - not_null
@@ -44,3 +53,6 @@ models:
   - name: meta_source_service
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - week5-event-sourcing-platform

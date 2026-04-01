@@ -1,13 +1,13 @@
 {
-  "run_id": "ab0a4bab-9eb1-4b77-98f7-5d44f00ee4f4",
-  "run_date": "2026-03-30T19:36:36.418640Z",
+  "run_id": "96b0b0e3-0526-4922-8d98-99917f0a20f3",
+  "run_date": "2026-03-31T19:37:47.921804Z",
   "checks": [
     {
       "check": "embedding_drift",
-      "status": "BASELINE_SET",
+      "status": "PASS",
       "drift_score": 0.0,
       "threshold": 0.15,
-      "interpretation": "Baseline established. First run \u2014 no drift to compare."
+      "interpretation": "stable \u2014 content semantics unchanged"
     },
     {
       "check": "prompt_input_validation",

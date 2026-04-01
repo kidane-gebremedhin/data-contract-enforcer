@@ -1,39 +1,56 @@
 {
-  "report_id": "3d4ae44c-cb13-4148-8ec4-fe1a04af1485",
+  "report_id": "55377418-14da-4870-b7e1-ce9bc854789f",
   "contract_id": "week3-document-refinery-extractions",
-  "generated_at": "2026-03-30T19:39:05.093280Z",
-  "total_changes": 3,
+  "generated_at": "2026-03-31T18:10:18.239143Z",
+  "total_changes": 4,
   "breaking_changes": 3,
-  "compatible_changes": 0,
+  "compatible_changes": 1,
   "overall_verdict": "BREAKING",
   "changes": [
+    {
+      "field": "extraction_model",
+      "change_type": "field_modified",
+      "classification": "COMPATIBLE",
+      "description": "Enum values added: {'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'}",
+      "old_value": {
+        "type": "string",
+        "required": true
+      },
+      "new_value": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "claude-3-5-sonnet-20241022",
+          "claude-3-haiku-20240307"
+        ]
+      }
+    },
     {
       "field": "fact_confidence",
       "change_type": "field_modified",
       "classification": "BREAKING",
-      "description": "Range change maximum 1.0 -> 100.0",
+      "description": "Range change maximum 100.0 -> 1.0",
       "old_value": {
-        "type": "number",
-        "required": true,
-        "minimum": 0.0,
-        "maximum": 1.0,
-        "description": "Confidence score. Must remain 0.0-1.0 float. BREAKING if changed to 0-100."
-      },
-      "new_value": {
         "type": "number",
         "required": true,
         "minimum": 0.0,
         "maximum": 100.0,
         "description": "Confidence 0-100 percentage."
+      },
+      "new_value": {
+        "type": "number",
+        "required": true,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Confidence score. Must remain 0.0-1.0 float. BREAKING if changed to 0-100."
       }
     },
     {
       "field": "quality_flag",
-      "change_type": "field_added",
+      "change_type": "field_removed",
       "classification": "BREAKING",
-      "description": "Add non-nullable column \u2014 coordinate with all producers",
-      "old_value": null,
-      "new_value": {
+      "description": "Remove column \u2014 deprecation period mandatory",
+      "old_value": {
         "type": "string",
         "required": true,
         "enum": [
@@ -42,20 +59,21 @@
           "low"
         ],
         "description": "Quality assessment flag"
-      }
+      },
+      "new_value": null
     },
     {
       "field": "source_hash",
-      "change_type": "field_removed",
+      "change_type": "field_added",
       "classification": "BREAKING",
-      "description": "Remove column \u2014 deprecation period mandatory",
-      "old_value": {
+      "description": "Add non-nullable column \u2014 coordinate with all producers",
+      "old_value": null,
+      "new_value": {
         "type": "string",
         "required": true,
         "pattern": "^[a-f0-9]{64}$",
         "description": "SHA-256 hash."
-      },
-      "new_value": null
+      }
     }
   ],
   "blast_radius": {
@@ -66,17 +84,17 @@
     "consumer_count": 2
   },
   "migration_checklist": [
-    "1. Update downstream consumers for field 'fact_confidence': Range change maximum 1.0 -> 100.0",
-    "2. Update downstream consumers for field 'quality_flag': Add non-nullable column \u2014 coordinate with all producers",
-    "3. Update downstream consumers for field 'source_hash': Remove column \u2014 deprecation period mandatory"
+    "1. Update downstream consumers for field 'fact_confidence': Range change maximum 100.0 -> 1.0",
+    "2. Update downstream consumers for field 'quality_flag': Remove column \u2014 deprecation period mandatory",
+    "3. Update downstream consumers for field 'source_hash': Add non-nullable column \u2014 coordinate with all producers"
   ],
   "rollback_plan": [
-    "1. Revert field 'fact_confidence' to previous state: {\"type\": \"number\", \"required\": true, \"minimum\": 0.0, \"maximum\": 1.0, \"description\": \"Confidence score. Must remain 0.0-1.0 float. BREAKING if changed to 0-100.\"}",
-    "2. Revert field 'quality_flag' to previous state: null",
-    "3. Revert field 'source_hash' to previous state: {\"type\": \"string\", \"required\": true, \"pattern\": \"^[a-f0-9]{64}$\", \"description\": \"SHA-256 hash.\"}"
+    "1. Revert field 'fact_confidence' to previous state: {\"type\": \"number\", \"required\": true, \"minimum\": 0.0, \"maximum\": 100.0, \"description\": \"Confidence 0-100 percentage.\"}",
+    "2. Revert field 'quality_flag' to previous state: {\"type\": \"string\", \"required\": true, \"enum\": [\"high\", \"medium\", \"low\"], \"description\": \"Quality assessment flag\"}",
+    "3. Revert field 'source_hash' to previous state: null"
   ],
   "snapshots_compared": {
-    "old": "schema_snapshots/week3-document-refinery-extractions/20260330_193636.yaml",
-    "new": "schema_snapshots/week3-document-refinery-extractions/20260330_193904.yaml"
+    "old": "schema_snapshots/week3-document-refinery-extractions/20260330_193904.yaml",
+    "new": "schema_snapshots/week3-document-refinery-extractions/20260331_142228.yaml"
   }
 }

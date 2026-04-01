@@ -23,41 +23,6 @@ schema:
   event_type:
     type: string
     required: true
-    enum:
-    - ApplicationSubmitted
-    - DocumentUploadRequested
-    - PackageCreated
-    - DocumentUploaded
-    - DocumentAdded
-    - AgentSessionStarted
-    - AgentInputValidated
-    - AgentNodeExecuted
-    - DocumentFormatValidated
-    - ExtractionStarted
-    - AgentToolCalled
-    - ExtractionCompleted
-    - QualityAssessmentCompleted
-    - PackageReadyForAnalysis
-    - AgentOutputWritten
-    - AgentSessionCompleted
-    - CreditAnalysisRequested
-    - CreditRecordOpened
-    - HistoricalProfileConsumed
-    - ExtractedFactsConsumed
-    - CreditAnalysisCompleted
-    - FraudScreeningRequested
-    - FraudScreeningInitiated
-    - FraudScreeningCompleted
-    - ComplianceCheckRequested
-    - ComplianceCheckInitiated
-    - ComplianceRulePassed
-    - ComplianceRuleNoted
-    - ComplianceCheckCompleted
-    - DecisionRequested
-    - DecisionGenerated
-    - ApplicationApproved
-    - ComplianceRuleFailed
-    - ApplicationDeclined
   aggregate_id:
     type: string
     required: true
@@ -104,34 +69,6 @@ schema:
     required: true
     format: uuid
     pattern: ^[0-9a-f-]{36}$
-    enum:
-    - COMP-074
-    - system
-    - COMP-041
-    - COMP-031
-    - COMP-015
-    - COMP-057
-    - COMP-044
-    - COMP-019
-    - COMP-078
-    - COMP-025
-    - COMP-014
-    - COMP-070
-    - COMP-058
-    - COMP-052
-    - COMP-020
-    - COMP-060
-    - COMP-063
-    - COMP-002
-    - COMP-080
-    - COMP-006
-    - COMP-048
-    - COMP-043
-    - COMP-042
-    - COMP-051
-    - COMP-018
-    - COMP-013
-    - COMP-075
   meta_source_service:
     type: string
     required: true

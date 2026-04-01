@@ -15,6 +15,10 @@ models:
   - name: extraction_model
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - claude-3-5-sonnet-20241022
+        - claude-3-haiku-20240307
   - name: processing_time_ms
     tests:
     - not_null

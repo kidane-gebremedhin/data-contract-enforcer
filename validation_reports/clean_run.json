@@ -1,10 +1,10 @@
 {
-  "report_id": "13520222-7a38-4554-bd27-0c862932af40",
+  "report_id": "2d589d6b-9bd6-45d2-af9d-948bcd12a5ab",
   "contract_id": "week3-document-refinery-extractions",
-  "snapshot_id": "5e24586e5cec2cd08930a2f1a53764dff25542e939001a3659f0dca954339c3e",
-  "run_timestamp": "2026-03-30T19:36:34.853022Z",
-  "total_checks": 27,
-  "passed": 27,
+  "snapshot_id": "13713a92194db8687a4de448e838627d45908bc8406db76363e1f2bf23fa0b1a",
+  "run_timestamp": "2026-03-31T15:20:57.555418Z",
+  "total_checks": 31,
+  "passed": 31,
   "failed": 0,
   "warned": 0,
   "errored": 0,
@@ -27,11 +27,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.doc_id.pattern",
@@ -63,11 +63,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.source_hash.required",
@@ -87,11 +87,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.source_hash.pattern",
@@ -123,11 +123,23 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
+    },
+    {
+      "check_id": "week3-document-refinery-extractions.extraction_model.enum",
+      "column_name": "extraction_model",
+      "check_type": "enum",
+      "status": "PASS",
+      "severity": "LOW",
+      "actual_value": "0 non-conforming values",
+      "expected": "one of ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']",
+      "records_failing": 0,
+      "sample_failing": [],
+      "message": "All values conform to enum."
     },
     {
       "check_id": "week3-document-refinery-extractions.processing_time_ms.required",
@@ -171,11 +183,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.extracted_at.datetime",
@@ -207,11 +219,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.fact_fact_id.pattern",
@@ -243,11 +255,11 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
     },
     {
       "check_id": "week3-document-refinery-extractions.fact_confidence.required",
@@ -327,11 +339,47 @@
       "check_type": "type",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "str",
+      "actual_value": "object",
       "expected": "string",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Type matches: actual=str, expected=string."
+      "message": "Type matches: actual=object, expected=string."
+    },
+    {
+      "check_id": "week3-document-refinery-extractions.processing_time_ms.statistical_drift",
+      "column_name": "processing_time_ms",
+      "check_type": "statistical_drift",
+      "status": "PASS",
+      "severity": "LOW",
+      "actual_value": "mean=1821.9891, z_score=0.00",
+      "expected": "mean=1821.9891 \u00b1 529.1147",
+      "records_failing": 0,
+      "sample_failing": [],
+      "message": "processing_time_ms mean stable (0.0 stddev from baseline)"
+    },
+    {
+      "check_id": "week3-document-refinery-extractions.fact_confidence.statistical_drift",
+      "column_name": "fact_confidence",
+      "check_type": "statistical_drift",
+      "status": "PASS",
+      "severity": "LOW",
+      "actual_value": "mean=0.8430, z_score=0.00",
+      "expected": "mean=0.8430 \u00b1 0.0815",
+      "records_failing": 0,
+      "sample_failing": [],
+      "message": "fact_confidence mean stable (0.0 stddev from baseline)"
+    },
+    {
+      "check_id": "week3-document-refinery-extractions.fact_page_ref.statistical_drift",
+      "column_name": "fact_page_ref",
+      "check_type": "statistical_drift",
+      "status": "PASS",
+      "severity": "LOW",
+      "actual_value": "mean=13.4708, z_score=0.00",
+      "expected": "mean=13.4708 \u00b1 3.9983",
+      "records_failing": 0,
+      "sample_failing": [],
+      "message": "fact_page_ref mean stable (0.0 stddev from baseline)"
     }
   ]
 }
