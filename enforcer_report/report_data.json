@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-31T19:48:08.886066Z",
-  "period": "2026-03-24 to 2026-03-31",
+  "generated_at": "2026-04-01T22:00:44.184050Z",
+  "period": "2026-03-25 to 2026-04-01",
   "data_health_score": 70,
   "health_narrative": "Score of 70/100. 1 critical issues require immediate action.",
   "top_violations": [
@@ -13,9 +13,9 @@
     "MEDIUM": 0,
     "LOW": 0
   },
-  "violation_count": 5,
-  "schema_changes_summary": "4 schema changes detected. 3 breaking, 1 compatible. Verdict: BREAKING",
-  "ai_system_risk_assessment": "Embedding drift: PASS (score=0.0); Prompt validation: PASS (55/55 valid); LLM output violations: PASS (rate=0.0, trend=stable)",
+  "violation_count": 2,
+  "schema_changes_summary": "No schema changes detected.",
+  "ai_system_risk_assessment": "Embedding drift: BASELINE_SET (score=0.0); Prompt validation: PASS (55/55 valid); LLM output violations: PASS (rate=0.0, trend=stable)",
   "recommendations": [
     "Update source pipeline to output fact_confidence as float 0.0-1.0 per contract clause week3-document-refinery-extractions.fact_confidence.range",
     "Investigate statistical drift in fact_confidence. Re-establish baseline after confirming data correctness.",
@@ -23,7 +23,7 @@
     "Review schema evolution snapshots weekly to catch breaking changes early."
   ],
   "reports_analyzed": 2,
-  "total_checks_run": 62,
-  "total_passed": 60,
+  "total_checks_run": 59,
+  "total_passed": 57,
   "total_failed": 2
 }

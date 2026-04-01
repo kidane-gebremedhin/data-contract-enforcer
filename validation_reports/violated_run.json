@@ -1,8 +1,8 @@
 {
-  "report_id": "28230946-21dd-4b78-a695-bb66bfe6a930",
+  "report_id": "c6130bb5-b212-418b-b118-c0885ee646e4",
   "contract_id": "week3-document-refinery-extractions",
   "snapshot_id": "ccf359354719974c79cba415e442ec53d92322bf4f205617723d1855f59fbe7b",
-  "run_timestamp": "2026-03-31T15:20:03.045262Z",
+  "run_timestamp": "2026-04-01T21:58:07.362066Z",
   "total_checks": 31,
   "passed": 29,
   "failed": 2,

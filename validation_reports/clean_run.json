@@ -1,10 +1,10 @@
 {
-  "report_id": "2d589d6b-9bd6-45d2-af9d-948bcd12a5ab",
+  "report_id": "7a9694c0-cb13-429d-96a1-6cae466ac739",
   "contract_id": "week3-document-refinery-extractions",
   "snapshot_id": "13713a92194db8687a4de448e838627d45908bc8406db76363e1f2bf23fa0b1a",
-  "run_timestamp": "2026-03-31T15:20:57.555418Z",
-  "total_checks": 31,
-  "passed": 31,
+  "run_timestamp": "2026-04-01T21:57:43.134835Z",
+  "total_checks": 28,
+  "passed": 28,
   "failed": 0,
   "warned": 0,
   "errored": 0,
@@ -344,42 +344,6 @@
       "records_failing": 0,
       "sample_failing": [],
       "message": "Type matches: actual=object, expected=string."
-    },
-    {
-      "check_id": "week3-document-refinery-extractions.processing_time_ms.statistical_drift",
-      "column_name": "processing_time_ms",
-      "check_type": "statistical_drift",
-      "status": "PASS",
-      "severity": "LOW",
-      "actual_value": "mean=1821.9891, z_score=0.00",
-      "expected": "mean=1821.9891 \u00b1 529.1147",
-      "records_failing": 0,
-      "sample_failing": [],
-      "message": "processing_time_ms mean stable (0.0 stddev from baseline)"
-    },
-    {
-      "check_id": "week3-document-refinery-extractions.fact_confidence.statistical_drift",
-      "column_name": "fact_confidence",
-      "check_type": "statistical_drift",
-      "status": "PASS",
-      "severity": "LOW",
-      "actual_value": "mean=0.8430, z_score=0.00",
-      "expected": "mean=0.8430 \u00b1 0.0815",
-      "records_failing": 0,
-      "sample_failing": [],
-      "message": "fact_confidence mean stable (0.0 stddev from baseline)"
-    },
-    {
-      "check_id": "week3-document-refinery-extractions.fact_page_ref.statistical_drift",
-      "column_name": "fact_page_ref",
-      "check_type": "statistical_drift",
-      "status": "PASS",
-      "severity": "LOW",
-      "actual_value": "mean=13.4708, z_score=0.00",
-      "expected": "mean=13.4708 \u00b1 3.9983",
-      "records_failing": 0,
-      "sample_failing": [],
-      "message": "fact_page_ref mean stable (0.0 stddev from baseline)"
     }
   ]
 }
