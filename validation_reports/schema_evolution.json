@@ -1,0 +1,176 @@
+{
+  "report_id": "3284a98c-f943-4605-b9db-9ee05b5397f9",
+  "contract_id": "week3-document-refinery-extractions",
+  "generated_at": "2026-04-05T00:00:24.533512Z",
+  "total_changes": 2,
+  "breaking_changes": 2,
+  "compatible_changes": 0,
+  "overall_verdict": "BREAKING",
+  "changes": [
+    {
+      "field": "doc_id",
+      "change_type": "field_modified",
+      "classification": "BREAKING",
+      "description": "Type change string -> integer",
+      "human_readable": "The data type of 'doc_id' changed (Type change string -> integer). All consumers parsing this field must update.",
+      "old_value": {
+        "type": "string",
+        "required": true,
+        "format": "uuid",
+        "pattern": "^[0-9a-f-]{36}$"
+      },
+      "new_value": {
+        "type": "integer",
+        "required": true,
+        "minimum": 7000,
+        "maximum": 9800,
+        "description": "Numeric field. Observed range [7000.0, 9800.0], mean=8295.99, stddev=731.26."
+      }
+    },
+    {
+      "field": "extracted_facts.confidence",
+      "change_type": "field_modified",
+      "classification": "BREAKING",
+      "description": "Range change maximum 0.0 -> 100.0",
+      "human_readable": "The allowed range for 'extracted_facts.confidence' changed (Range change maximum 1.0 -> 100.0). Downstream validation rules need updating.",
+      "old_value": {
+        "type": "number",
+        "required": true,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Confidence score (0.0-1.0 scale). Observed range [0.00, 0.98], mean=0.84, stddev=0.10. BREAKING if changed to 0-100."
+      },
+      "new_value": {
+        "type": "number",
+        "required": true,
+        "minimum": 0.0,
+        "maximum": 100.0,
+        "description": "Confidence score (0-100 scale). Observed range [0.00, 98.00], mean=83.97, stddev=9.61."
+      }
+    }
+  ],
+  "blast_radius": {
+    "source": "registry",
+    "affected_consumers": [
+      "week4-cartographer",
+      "week7-enforcer"
+    ],
+    "consumer_count": 2,
+    "registry_subscribers": [
+      "week4-cartographer",
+      "week7-enforcer"
+    ]
+  },
+  "consumer_failure_modes": [
+    {
+      "subscriber_id": "week4-cartographer",
+      "subscriber_team": "week4",
+      "contact": "week4-team@org.com",
+      "validation_mode": "ENFORCE",
+      "affected_changes": [
+        {
+          "field": "doc_id",
+          "change": "Type change string -> integer",
+          "reason_critical": "Primary key used as node identity in lineage graph.",
+          "human_readable": "The data type of 'doc_id' changed (Type change string -> integer). All consumers parsing this field must update."
+        },
+        {
+          "field": "extracted_facts.confidence",
+          "change": "Range change maximum 1.0 -> 100.0",
+          "reason_critical": "Used for edge-weight ranking in lineage graph. Scale change (0.0-1.0 vs 0-100) breaks node ordering and produces incorrect transitive dependency weights.\n",
+          "human_readable": "The allowed range for 'extracted_facts.confidence' changed (Range change maximum 1.0 -> 100.0). Downstream validation rules need updating."
+        }
+      ],
+      "failure_severity": "CRITICAL"
+    },
+    {
+      "subscriber_id": "week7-enforcer",
+      "subscriber_team": "week7",
+      "contact": "week7-team@org.com",
+      "validation_mode": "AUDIT",
+      "affected_changes": [
+        {
+          "field": "doc_id",
+          "change": "Type change string -> integer",
+          "reason_critical": "Field is consumed by this subscriber",
+          "human_readable": "The data type of 'doc_id' changed (Type change string -> integer). All consumers parsing this field must update."
+        },
+        {
+          "field": "extracted_facts.confidence",
+          "change": "Range change maximum 1.0 -> 100.0",
+          "reason_critical": "AI extension embedding drift check uses confidence for filtering.",
+          "human_readable": "The allowed range for 'extracted_facts.confidence' changed (Range change maximum 1.0 -> 100.0). Downstream validation rules need updating."
+        }
+      ],
+      "failure_severity": "HIGH"
+    }
+  ],
+  "migration_checklist": [
+    "[IMMEDIATE] Field 'doc_id' type changed. Coordinate dual-write period with upstream producers.",
+    "[BEFORE DEPLOY] Update week4-cartographer (week4) for field 'doc_id': Type change string -> integer. Contact: week4-team@org.com",
+    "[BEFORE DEPLOY] Update week4-cartographer (week4) for field 'extracted_facts.confidence': Range change maximum 1.0 -> 100.0. Contact: week4-team@org.com",
+    "[BEFORE DEPLOY] Update week7-enforcer (week7) for field 'doc_id': Type change string -> integer. Contact: week7-team@org.com",
+    "[BEFORE DEPLOY] Update week7-enforcer (week7) for field 'extracted_facts.confidence': Range change maximum 1.0 -> 100.0. Contact: week7-team@org.com",
+    "[AFTER DEPLOY] Re-run validation for field 'doc_id' to confirm compliance.",
+    "[AFTER DEPLOY] Re-run validation for field 'extracted_facts.confidence' to confirm compliance."
+  ],
+  "rollback_plan": [
+    "1. Revert contract: `git checkout HEAD~1 -- generated_contracts/week3_document_refinery_extractions.yaml`",
+    "2. Revert dbt schema: `git checkout HEAD~1 -- generated_contracts/week3_document_refinery_extractions_dbt.yml`",
+    "3. Restore field 'doc_id' to previous state: {\"type\": \"string\", \"required\": true, \"format\": \"uuid\", \"pattern\": \"^[0-9a-f-]{36}$\"}",
+    "4. Restore field 'extracted_facts.confidence' to previous state: {\"type\": \"number\", \"required\": true, \"minimum\": 0.0, \"maximum\": 1.0, \"description\": \"Confidence score (0.0-1.0 scale). Observed range [0.00, 0.98], mean=0.84, stddev=0.10. BREAKING if changed to 0-100.\"}",
+    "5. Re-run validation: `python contracts/runner.py --contract generated_contracts/week3_document_refinery_extractions.yaml --data <DATA_PATH> --mode ENFORCE --output validation_reports/rollback_check.json`",
+    "6. Regenerate schema snapshot: `python contracts/generator.py --source <DATA_PATH> --contract-id week3-document-refinery-extractions --output generated_contracts/`"
+  ],
+  "deprecation_timelines": [
+    {
+      "field": "doc_id",
+      "contract_id": "week3-document-refinery-extractions",
+      "phases": [
+        {
+          "phase": "ANNOUNCE",
+          "description": "Notify all consumers that 'doc_id' will change/be removed.",
+          "timing": "T+0 (immediately)",
+          "action": "Send notification to subscriber contacts from registry."
+        },
+        {
+          "phase": "ALIAS",
+          "description": "Add backward-compatible alias for 'doc_id' if applicable.",
+          "timing": "T+1 week",
+          "action": "Update contract to support both old and new format."
+        },
+        {
+          "phase": "MIGRATION",
+          "description": "All consumers update to read from new field/format.",
+          "timing": "T+2 weeks",
+          "action": "Track consumer migration status via registry."
+        },
+        {
+          "phase": "CUTOVER",
+          "description": "Stop producing old format of 'doc_id'.",
+          "timing": "T+4 weeks",
+          "action": "Update producer pipeline. Remove alias from contract."
+        },
+        {
+          "phase": "CLEANUP",
+          "description": "Remove all references to old field/format.",
+          "timing": "T+6 weeks",
+          "action": "Delete deprecated clauses. Archive old snapshots."
+        }
+      ]
+    }
+  ],
+  "snapshots_compared": {
+    "old": "schema_snapshots/week3-document-refinery-extractions/20260404_234401.yaml",
+    "new": "schema_snapshots/week3-document-refinery-extractions/20260404_235845.yaml"
+  },
+  "hash_diff": {
+    "hashes_match": false,
+    "old_hash": "e576b8169ac92662c1000510b3d0120186186cfbf88ccbbc749e1556399e46a9",
+    "new_hash": "bddd113adb0164b627db89deebf22d1cff20e0c11cd8f277f28fbd2867d7553f",
+    "old_snapshot": "schema_snapshots/week3-document-refinery-extractions/20260404_234401.yaml",
+    "new_snapshot": "schema_snapshots/week3-document-refinery-extractions/20260404_235845.yaml",
+    "old_timestamp": "2026-04-04T23:44:01.949475Z",
+    "new_timestamp": "2026-04-04T23:58:45.954551Z"
+  }
+}

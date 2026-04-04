@@ -10,18 +10,17 @@ info:
 servers:
   local:
     type: local
-    path: outputs/week3/extractions_violated.jsonl
+    path: outputs/week3/extractions.jsonl
     format: jsonl
 terms:
   usage: Internal inter-system data contract. Do not publish.
-  limitations: confidence uses 0-100 numeric scale.
+  limitations: confidence must remain in 0.0-1.0 float range.
 schema:
   doc_id:
-    type: integer
+    type: string
     required: true
-    minimum: 7000
-    maximum: 9800
-    description: Numeric field. Observed range [7000.0, 9800.0], mean=8295.99, stddev=731.26.
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
   source_path:
     type: string
     required: true
@@ -59,9 +58,9 @@ schema:
         type: number
         required: true
         minimum: 0.0
-        maximum: 100.0
-        description: Confidence score (0-100 scale). Observed range [0.00, 98.00],
-          mean=83.97, stddev=9.61.
+        maximum: 1.0
+        description: Confidence score (0.0-1.0 scale). Observed range [0.00, 0.98],
+          mean=0.84, stddev=0.10. BREAKING if changed to 0-100.
       page_ref:
         type: integer
         required: true
@@ -82,7 +81,7 @@ quality:
     - missing_count(extraction_model) = 0
     - missing_count(processing_time_ms) = 0
     - min(extracted_facts.confidence) >= 0.0
-    - max(extracted_facts.confidence) <= 98.0
+    - max(extracted_facts.confidence) <= 1.0
 lineage:
   upstream: []
   downstream:

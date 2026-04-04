@@ -131,6 +131,16 @@ def infer_type(dtype_str):
     return mapping.get(dtype_str, "string")
 
 
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+_ISO_DT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+
+
+def _all_values_match(sample_values, regex):
+    """Check if all non-empty sample values match a regex pattern."""
+    return all(regex.match(v) for v in sample_values if v)
+
+
 def column_to_clause(profile):
     clause = {
         "type": infer_type(profile["dtype"]),
@@ -138,48 +148,84 @@ def column_to_clause(profile):
     }
 
     name = profile["name"]
+    samples = profile.get("sample_values", [])
 
-    # Confidence fields: must be 0.0-1.0
-    if "confidence" in name and clause["type"] == "number":
-        clause["minimum"] = 0.0
-        clause["maximum"] = 1.0
-        clause["description"] = "Confidence score. Must remain 0.0-1.0 float. BREAKING if changed to 0-100."
+    # ── Numeric semantic fields (confidence, score) — infer from data ──
 
-    # Score fields: must be 1-5
-    if name.startswith("score_") and clause["type"] in ("integer", "number"):
-        clause["minimum"] = 1
-        clause["maximum"] = 5
-        clause["description"] = "Rubric score. Integer 1-5."
+    if "confidence" in name and clause["type"] == "number" and "stats" in profile:
+        s = profile["stats"]
+        if s["max"] > 1.0:
+            clause["minimum"] = 0.0
+            clause["maximum"] = 100.0
+            clause["description"] = (
+                f"Confidence score (0-100 scale). "
+                f"Observed range [{s['min']:.2f}, {s['max']:.2f}], "
+                f"mean={s['mean']:.2f}, stddev={s['stddev']:.2f}."
+            )
+        else:
+            clause["minimum"] = 0.0
+            clause["maximum"] = 1.0
+            clause["description"] = (
+                f"Confidence score (0.0-1.0 scale). "
+                f"Observed range [{s['min']:.2f}, {s['max']:.2f}], "
+                f"mean={s['mean']:.2f}, stddev={s['stddev']:.2f}. "
+                f"BREAKING if changed to 0-100."
+            )
 
-    # ID fields
+    elif name.startswith("score_") and clause["type"] in ("integer", "number") and "stats" in profile:
+        s = profile["stats"]
+        clause["minimum"] = int(s["min"]) if clause["type"] == "integer" else s["min"]
+        clause["maximum"] = int(s["max"]) if clause["type"] == "integer" else s["max"]
+        clause["description"] = (
+            f"Rubric score. Observed range [{s['min']}, {s['max']}], "
+            f"mean={s['mean']:.2f}, stddev={s['stddev']:.2f}."
+        )
+
+    # ── String format fields — verify against actual data ──
+
+    # ID fields: only mark as UUID if all values actually match UUID pattern
     if name.endswith("_id") or name in ("id", "doc_id", "fact_id", "intent_id",
                                          "verdict_id", "event_id", "snapshot_id"):
-        clause["format"] = "uuid"
-        clause["pattern"] = "^[0-9a-f-]{36}$"
+        if samples and _all_values_match(samples, _UUID_RE):
+            clause["format"] = "uuid"
+            clause["pattern"] = "^[0-9a-f-]{36}$"
 
-    # Timestamp fields
-    if name.endswith("_at") or name.endswith("_time"):
-        clause["format"] = "date-time"
-
-    # Hash fields
+    # Hash fields: only set SHA-256 pattern if values actually match
     if "hash" in name:
-        clause["pattern"] = "^[a-f0-9]{64}$"
-        clause["description"] = "SHA-256 hash."
+        if samples and _all_values_match(samples, _SHA256_RE):
+            clause["pattern"] = "^[a-f0-9]{64}$"
+            clause["description"] = "SHA-256 hash."
 
-    # Enum fields (low cardinality strings)
-    if (profile["cardinality_estimate"] <= 50
+    # Timestamp fields: only set date-time if values look like ISO timestamps
+    if name.endswith("_at") or name.endswith("_time"):
+        if samples and _all_values_match(samples, _ISO_DT_RE):
+            clause["format"] = "date-time"
+
+    # ── Enum fields — only for genuinely categorical data ──
+    # Skip enums for IDs, timestamps, and high-uniqueness fields
+    is_id_field = name.endswith("_id") or name in ("id", "doc_id", "fact_id",
+                                                     "intent_id", "verdict_id",
+                                                     "event_id", "snapshot_id")
+    is_timestamp = clause.get("format") == "date-time"
+    uniqueness_ratio = (profile["cardinality_estimate"] / max(len(samples), 1)
+                        if samples else 1.0)
+
+    if (not is_id_field
+            and not is_timestamp
+            and profile["cardinality_estimate"] <= 20
+            and uniqueness_ratio < 0.9
             and profile["dtype"] == "object"
-            and len(profile["sample_values"]) == profile["cardinality_estimate"]):
-        clause["enum"] = profile["sample_values"]
+            and len(samples) == profile["cardinality_estimate"]):
+        clause["enum"] = samples
 
-    # Add observed range bounds for numeric columns without semantic ranges
+    # ── Generic numeric range — fallback for fields without semantic rules ──
     if "stats" in profile and "minimum" not in clause and "maximum" not in clause:
         s = profile["stats"]
         if clause["type"] in ("integer", "number"):
             clause["minimum"] = int(s["min"]) if clause["type"] == "integer" else s["min"]
             clause["maximum"] = int(s["max"]) if clause["type"] == "integer" else s["max"]
 
-    # Add stats-based description for numeric columns
+    # Add stats-based description for numeric columns without one
     if "stats" in profile and "description" not in clause:
         s = profile["stats"]
         clause["description"] = (
@@ -248,6 +294,16 @@ def inject_lineage(contract, lineage_path, contract_id, registry_path=None):
     return contract
 
 
+def _infer_confidence_limitation(column_profiles):
+    """Infer confidence range limitation from profiled data."""
+    for col, p in column_profiles.items():
+        if "confidence" in col and "stats" in p:
+            if p["stats"]["max"] > 1.0:
+                return "confidence uses 0-100 numeric scale."
+            return "confidence must remain in 0.0-1.0 float range."
+    return "No confidence field detected."
+
+
 def build_contract(column_profiles, contract_id, source_path, records_count):
     """Build a full Bitol-compatible contract YAML."""
     schema = {}
@@ -288,7 +344,7 @@ def build_contract(column_profiles, contract_id, source_path, records_count):
         },
         "terms": {
             "usage": "Internal inter-system data contract. Do not publish.",
-            "limitations": "confidence must remain in 0.0-1.0 float range."
+            "limitations": _infer_confidence_limitation(column_profiles)
         },
         "schema": schema,
         "quality": {

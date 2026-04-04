@@ -5,13 +5,14 @@ models:
     Requires dbt_expectations package for pattern and range tests.
   columns:
   - name: doc_id
-    description: Auto-generated from contract week3-document-refinery-extractions
-    data_type: string
+    description: Numeric field. Observed range [7000.0, 9800.0], mean=8295.99, stddev=731.26.
+    data_type: integer
     tests:
     - not_null
     - unique
-    - dbt_expectations.expect_column_values_to_match_regex:
-        regex: ^[0-9a-f-]{36}$
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 7000
+        max_value: 9800
   - name: source_path
     description: Auto-generated from contract week3-document-refinery-extractions
     data_type: string
@@ -29,10 +30,6 @@ models:
     data_type: string
     tests:
     - not_null
-    - accepted_values:
-        values:
-        - claude-3-5-sonnet-20241022
-        - claude-3-haiku-20240307
   - name: processing_time_ms
     description: Numeric field. Observed range [838.0, 2750.0], mean=1821.99, stddev=529.11.
     data_type: integer
@@ -62,14 +59,14 @@ models:
     tests:
     - not_null
   - name: extracted_facts.confidence
-    description: Confidence score. Must remain 0.0-1.0 float. BREAKING if changed
-      to 0-100.
+    description: Confidence score (0-100 scale). Observed range [0.00, 98.00], mean=83.97,
+      stddev=9.61.
     data_type: number
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_be_between:
         min_value: 0.0
-        max_value: 1.0
+        max_value: 100.0
   - name: extracted_facts.page_ref
     description: Numeric field. Observed range [3.0, 19.0], mean=13.47, stddev=4.00.
     data_type: integer

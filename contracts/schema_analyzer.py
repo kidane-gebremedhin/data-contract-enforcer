@@ -166,24 +166,45 @@ def human_readable_diff(change):
     return change["description"]
 
 
-def diff_schemas(old_contract, new_contract):
-    """Diff two contract schemas and classify each change."""
-    old_schema = old_contract.get("schema", {})
-    new_schema = new_contract.get("schema", {})
-
+def _diff_fields(old_schema, new_schema, prefix=""):
+    """Recursively diff schema fields, descending into object properties."""
     all_fields = set(list(old_schema.keys()) + list(new_schema.keys()))
     changes = []
 
     for field in sorted(all_fields):
         old_clause = old_schema.get(field)
         new_clause = new_schema.get(field)
+        qualified = f"{prefix}{field}" if prefix else field
 
         if old_clause == new_clause:
             continue
 
-        classification, description = classify_change(field, old_clause, new_clause)
+        # If both sides are objects with properties, recurse into sub-fields
+        if (isinstance(old_clause, dict) and isinstance(new_clause, dict)
+                and old_clause.get("type") == "object" and new_clause.get("type") == "object"
+                and ("properties" in old_clause or "properties" in new_clause)):
+            old_props = old_clause.get("properties", {})
+            new_props = new_clause.get("properties", {})
+            sub_changes = _diff_fields(old_props, new_props, prefix=f"{qualified}.")
+            if sub_changes:
+                changes.extend(sub_changes)
+            else:
+                # Object wrapper changed but no property-level diffs (e.g. required flag)
+                classification, description = classify_change(qualified, old_clause, new_clause)
+                changes.append({
+                    "field": qualified,
+                    "change_type": "field_modified",
+                    "classification": classification,
+                    "description": description,
+                    "human_readable": "",
+                    "old_value": old_clause,
+                    "new_value": new_clause
+                })
+            continue
+
+        classification, description = classify_change(qualified, old_clause, new_clause)
         changes.append({
-            "field": field,
+            "field": qualified,
             "change_type": (
                 "field_added" if old_clause is None else
                 "field_removed" if new_clause is None else
@@ -195,6 +216,16 @@ def diff_schemas(old_contract, new_contract):
             "old_value": old_clause,
             "new_value": new_clause
         })
+
+    return changes
+
+
+def diff_schemas(old_contract, new_contract):
+    """Diff two contract schemas and classify each change."""
+    old_schema = old_contract.get("schema", {})
+    new_schema = new_contract.get("schema", {})
+
+    changes = _diff_fields(old_schema, new_schema)
 
     # Fill in human-readable descriptions
     for change in changes:

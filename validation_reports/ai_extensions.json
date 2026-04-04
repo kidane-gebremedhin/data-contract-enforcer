@@ -1,6 +1,6 @@
 {
-  "run_id": "6378e07a-2ed1-494d-aee4-1860d47b7754",
-  "run_date": "2026-04-01T22:00:28.893613Z",
+  "run_id": "3b330be7-2f94-48a7-9097-5337af246c5c",
+  "run_date": "2026-04-05T00:04:02.133323Z",
   "checks": [
     {
       "check": "embedding_drift",

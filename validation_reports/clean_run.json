@@ -1,10 +1,10 @@
 {
-  "report_id": "5b80778a-c74a-43d3-9958-fd0ef403784d",
+  "report_id": "3a91de33-e21c-4c46-8fa1-e9c15786fbc5",
   "contract_id": "week3-document-refinery-extractions",
-  "snapshot_id": "05ae9a91c106897d3a5c026d7aee817b2dd3ac6e2c19a57a4f5af6f4b259b131",
-  "run_timestamp": "2026-04-04T19:35:46.224636Z",
-  "total_checks": 30,
-  "passed": 30,
+  "snapshot_id": "9c1b2b639897b747dc1515e4acb444296cd4b9eadd1ff4af507fea9642facb2a",
+  "run_timestamp": "2026-04-04T23:47:47.241288Z",
+  "total_checks": 29,
+  "passed": 29,
   "failed": 0,
   "warned": 0,
   "errored": 0,
@@ -128,18 +128,6 @@
       "records_failing": 0,
       "sample_failing": [],
       "message": "Type matches: actual=object, expected=string."
-    },
-    {
-      "check_id": "week3-document-refinery-extractions.extraction_model.enum",
-      "column_name": "extraction_model",
-      "check_type": "enum",
-      "status": "PASS",
-      "severity": "LOW",
-      "actual_value": "0 non-conforming values",
-      "expected": "one of ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']",
-      "records_failing": 0,
-      "sample_failing": [],
-      "message": "All values conform to enum."
     },
     {
       "check_id": "week3-document-refinery-extractions.processing_time_ms.required",
@@ -303,11 +291,11 @@
       "check_type": "range",
       "status": "PASS",
       "severity": "LOW",
-      "actual_value": "min=0.7000, max=0.9800, mean=0.8430",
+      "actual_value": "min=0.0000, max=0.9800, mean=0.8397",
       "expected": "min>=0.0, max<=1.0",
       "records_failing": 0,
       "sample_failing": [],
-      "message": "Range OK. Data range [0.7000, 0.9800] vs contract [0.0, 1.0]."
+      "message": "Range OK. Data range [0.0000, 0.9800] vs contract [0.0, 1.0]."
     },
     {
       "check_id": "week3-document-refinery-extractions.extracted_facts.page_ref.required",
