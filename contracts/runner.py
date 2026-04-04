@@ -445,10 +445,30 @@ def validate(contract_path, data_path):
     return report
 
 
+def determine_pipeline_action(results, mode):
+    """Determine pipeline action based on mode and check results.
+
+    AUDIT: always PASS (log only)
+    WARN: BLOCK only if CRITICAL failures exist
+    ENFORCE: BLOCK if CRITICAL or HIGH failures exist
+    """
+    if mode == "AUDIT":
+        return "PASS"
+
+    severities = {r["severity"] for r in results if r["status"] in ("FAIL", "ERROR")}
+    if mode == "WARN":
+        return "BLOCK" if "CRITICAL" in severities else "PASS"
+    if mode == "ENFORCE":
+        return "BLOCK" if severities & {"CRITICAL", "HIGH"} else "PASS"
+    return "PASS"
+
+
 def main():
     parser = argparse.ArgumentParser(description="ValidationRunner")
     parser.add_argument("--contract", required=True, help="Path to contract YAML")
     parser.add_argument("--data", required=True, help="Path to data JSONL")
+    parser.add_argument("--mode", choices=["AUDIT", "WARN", "ENFORCE"], default="AUDIT",
+                        help="Validation mode: AUDIT (log only), WARN (block critical), ENFORCE (block critical+high)")
     parser.add_argument("--output", required=True, help="Path for output report JSON")
     args = parser.parse_args()
 
@@ -460,12 +480,18 @@ def main():
 
     report = validate(args.contract, args.data)
 
+    # Determine pipeline action based on mode
+    pipeline_action = determine_pipeline_action(report.get("results", []), args.mode)
+    report["mode"] = args.mode
+    report["pipeline_action"] = pipeline_action
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(report, f, indent=2)
 
-    print(f"\n  Results: {report['total_checks']} checks — "
+    print(f"\n  Mode: {args.mode} | Pipeline action: {pipeline_action}")
+    print(f"  Results: {report['total_checks']} checks — "
           f"{report['passed']} PASS, {report['failed']} FAIL, "
           f"{report['warned']} WARN, {report['errored']} ERROR")
     print(f"  Report written to {output_path}")

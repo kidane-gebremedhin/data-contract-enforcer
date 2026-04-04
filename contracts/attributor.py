@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
-"""ViolationAttributor: Traces violations to upstream commits via lineage + git blame.
+"""ViolationAttributor: 4-step registry-first attribution pipeline.
+
+Pipeline:
+    Step 1: Registry blast radius query (primary source)
+    Step 2: Lineage traversal for transitive depth (enrichment)
+    Step 3: Git blame for cause attribution
+    Step 4: Write violation log
 
 Usage:
     python contracts/attributor.py \
-        --violation validation_reports/injected_violation.json \
+        --violation validation_reports/violated_run.json \
         --lineage outputs/week4/lineage_snapshots.jsonl \
         --contract generated_contracts/week3_document_refinery_extractions.yaml \
+        --registry contract_registry/subscriptions.yaml \
         --output violation_log/violations.jsonl
 """
 
 import argparse
 import json
 import subprocess
+import sys
+import os
 import uuid
 import re
 from datetime import datetime, timezone
@@ -19,13 +28,85 @@ from pathlib import Path
 
 import yaml
 
+# Ensure project root is importable
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from contracts.registry import load_registry, get_breaking_field_subscribers
 
-def find_upstream_files(failing_column, lineage_snapshot):
+
+# ── Field name mapping ────────────────────────────────────────────────
+
+def map_column_to_registry_field(column_name):
+    """Map flattened column name back to registry dot-notation.
+
+    E.g., 'fact_confidence' -> 'extracted_facts.confidence'
+          'meta_source_service' -> 'metadata.source_service'
+    """
+    mappings = {
+        "fact_confidence": "extracted_facts.confidence",
+        "fact_text": "extracted_facts.text",
+        "fact_fact_id": "extracted_facts.fact_id",
+        "fact_page_ref": "extracted_facts.page_ref",
+        "fact_source_excerpt": "extracted_facts.source_excerpt",
+        "meta_causation_id": "metadata.causation_id",
+        "meta_correlation_id": "metadata.correlation_id",
+        "meta_user_id": "metadata.user_id",
+        "meta_source_service": "metadata.source_service",
+    }
+    return mappings.get(column_name, column_name)
+
+
+# ── Step 1: Registry blast radius (PRIMARY) ──────────────────────────
+
+def registry_blast_radius(contract_id, failing_field, registry_path):
+    """Query registry for affected subscribers. Primary blast radius source."""
+    if not Path(registry_path).exists():
+        print(f"  WARNING: Registry not found at {registry_path}, falling back to lineage-only")
+        return []
+    registry = load_registry(registry_path)
+    affected = get_breaking_field_subscribers(registry, contract_id, failing_field)
+    return affected
+
+
+# ── Step 2: Lineage transitive depth (ENRICHMENT) ────────────────────
+
+def compute_transitive_depth(producer_node_id, lineage_path, max_depth=2):
+    """BFS traversal of lineage graph for transitive contamination depth."""
+    try:
+        with open(lineage_path) as f:
+            lines = [l for l in f if l.strip()]
+            snapshot = json.loads(lines[-1])
+    except Exception:
+        return {"direct": [], "transitive": [], "max_depth": 0}
+
+    visited, frontier, depth_map = set(), {producer_node_id}, {}
+
+    for depth in range(1, max_depth + 1):
+        next_frontier = set()
+        for node in frontier:
+            for edge in snapshot.get("edges", []):
+                src = edge.get("source", "")
+                tgt = edge.get("target", "")
+                if src == node or (node in src):
+                    if tgt not in visited:
+                        depth_map[tgt] = depth
+                        next_frontier.add(tgt)
+                        visited.add(tgt)
+        frontier = next_frontier
+
+    return {
+        "direct": [n for n, d in depth_map.items() if d == 1],
+        "transitive": [n for n, d in depth_map.items() if d > 1],
+        "max_depth": max(depth_map.values()) if depth_map else 0
+    }
+
+
+# ── Step 3: Git blame ────────────────────────────────────────────────
+
+def find_upstream_files(check_id, lineage_snapshot):
     """Walk lineage graph to find files that produce the failing column."""
-    # Determine which week/system the column belongs to
     column_system = None
     for w in ["week1", "week2", "week3", "week4", "week5"]:
-        if w in failing_column:
+        if w in check_id:
             column_system = w
             break
 
@@ -37,7 +118,6 @@ def find_upstream_files(failing_column, lineage_snapshot):
         elif node.get("type") == "PIPELINE" and column_system and column_system in nid:
             candidates.append(nid)
 
-    # If no file-level matches, look at edges for upstream producers
     if not candidates:
         for edge in lineage_snapshot.get("edges", []):
             tgt = edge.get("target", "")
@@ -50,7 +130,6 @@ def find_upstream_files(failing_column, lineage_snapshot):
 
 def get_recent_commits(file_path, days=14, repo_paths=None):
     """Run git log on the file and parse structured output."""
-    # Try multiple repo locations
     search_dirs = repo_paths or [
         "/home/kg/Projects/10Academy/document-intelligence-refinery",
         "/home/kg/Projects/10Academy/intelligent-rag",
@@ -88,7 +167,7 @@ def get_recent_commits(file_path, days=14, repo_paths=None):
         except Exception:
             continue
 
-    # Fallback: return a placeholder based on current repo
+    # Fallback: current repo recent commits
     try:
         result = subprocess.run(
             ["git", "log", "-5", "--format=%H|%ae|%ai|%s"],
@@ -126,7 +205,6 @@ def score_candidates(commits, violation_timestamp, lineage_distance=1):
     for rank, commit in enumerate(commits[:5], start=1):
         try:
             ts = commit["commit_timestamp"]
-            # Handle various git timestamp formats
             ts = re.sub(r"\s+([+-]\d{4})$", r"\1", ts)
             c_time = datetime.fromisoformat(ts.replace(" +", "+").replace(" -", "-"))
             days_diff = abs((v_time - c_time).days)
@@ -143,22 +221,46 @@ def score_candidates(commits, violation_timestamp, lineage_distance=1):
     return sorted(scored, key=lambda x: x["confidence_score"], reverse=True)
 
 
-def compute_blast_radius(contract_path, violation_id, records_failing=0):
-    """Compute blast radius from contract lineage."""
-    with open(contract_path) as f:
-        contract = yaml.safe_load(f)
+# ── Step 4: Write violation log ──────────────────────────────────────
 
-    downstream = contract.get("lineage", {}).get("downstream", [])
-    return {
-        "violation_id": violation_id,
-        "affected_nodes": [d["id"] for d in downstream],
-        "affected_pipelines": [d["id"] for d in downstream if "pipeline" in d.get("id", "")],
-        "estimated_records": records_failing
+def write_violation(check_result, registry_blast, lineage_enrichment, blame_chain,
+                    run_timestamp, injected=False):
+    """Build a violation log entry with full blast radius schema."""
+    entry = {
+        "violation_id": str(uuid.uuid4()),
+        "check_id": check_result["check_id"],
+        "detected_at": run_timestamp,
+        "severity": check_result.get("severity", "CRITICAL"),
+        "message": check_result.get("message", ""),
+        "actual_value": check_result.get("actual_value", ""),
+        "expected": check_result.get("expected", ""),
+        "blast_radius": {
+            "source": "registry" if registry_blast else "lineage",
+            "direct_subscribers": registry_blast,
+            "transitive_nodes": lineage_enrichment.get("transitive", []),
+            "contamination_depth": lineage_enrichment.get("max_depth", 0),
+            "affected_pipelines": [s["subscriber_id"] for s in registry_blast],
+            "estimated_records": check_result.get("records_failing", 0),
+            "note": "direct_subscribers from registry; transitive_nodes from lineage graph enrichment"
+        },
+        "blame_chain": blame_chain[:5],
+        "records_failing": check_result.get("records_failing", 0)
     }
 
+    if injected:
+        entry["injection_note"] = True
+        entry["injection_type"] = "scale_change"
+        entry["injection_description"] = (
+            "Deliberately injected violation for contract deployment validation."
+        )
 
-def attribute_violations(report_path, lineage_path, contract_path):
-    """Main attribution logic: for each FAIL, trace to upstream commit."""
+    return entry
+
+
+# ── Main attribution pipeline ────────────────────────────────────────
+
+def attribute_violations(report_path, lineage_path, contract_path, registry_path, injected=False):
+    """4-step attribution pipeline: registry -> lineage -> git -> write."""
     with open(report_path) as f:
         report = json.load(f)
 
@@ -166,89 +268,103 @@ def attribute_violations(report_path, lineage_path, contract_path):
         lines = [l for l in f if l.strip()]
         snapshot = json.loads(lines[-1])
 
+    contract_id = report.get("contract_id", "unknown")
+    run_timestamp = report.get("run_timestamp", datetime.now(timezone.utc).isoformat())
+
+    # Determine week key for lineage traversal
+    week_key = None
+    for w in ["week1", "week2", "week3", "week4", "week5"]:
+        if w in contract_id:
+            week_key = w
+            break
+    producer_node = f"pipeline::{week_key}" if week_key else contract_id
+
     violations = []
     for result in report.get("results", []):
         if result["status"] not in ("FAIL", "ERROR"):
             continue
 
-        violation_id = str(uuid.uuid4())
-        check_id = result["check_id"]
         column_name = result.get("column_name", "unknown")
+        registry_field = map_column_to_registry_field(column_name)
 
-        # Step 1: Find upstream files via lineage
-        upstream_files = find_upstream_files(check_id, snapshot)
+        # Step 1: Registry blast radius query (PRIMARY)
+        print(f"  Step 1: Registry query for {registry_field}...")
+        reg_blast = registry_blast_radius(contract_id, registry_field, registry_path)
+        print(f"    Found {len(reg_blast)} affected subscribers")
 
-        # Step 2: Git blame integration
+        # Step 2: Lineage traversal for enrichment
+        print(f"  Step 2: Lineage BFS from {producer_node}...")
+        lineage_enrichment = compute_transitive_depth(producer_node, lineage_path)
+        print(f"    Direct: {len(lineage_enrichment['direct'])}, "
+              f"Transitive: {len(lineage_enrichment['transitive'])}, "
+              f"Max depth: {lineage_enrichment['max_depth']}")
+
+        # Step 3: Git blame
+        print(f"  Step 3: Git blame for {result['check_id']}...")
+        upstream_files = find_upstream_files(result["check_id"], snapshot)
         all_commits = []
         for fp in upstream_files:
-            commits = get_recent_commits(fp)
-            all_commits.extend(commits)
-
-        # If no commits found from upstream files, get from current repo
+            all_commits.extend(get_recent_commits(fp))
         if not all_commits:
             all_commits = get_recent_commits(".")
-
-        # Step 3: Score candidates
-        scored = score_candidates(
-            all_commits,
-            report.get("run_timestamp", datetime.now(timezone.utc).isoformat()),
-            lineage_distance=1
+        blame_chain = score_candidates(
+            all_commits, run_timestamp,
+            lineage_distance=lineage_enrichment.get("max_depth", 1)
         )
+        print(f"    {len(blame_chain)} blame candidates scored")
 
-        # Step 4: Build violation record
-        blast = compute_blast_radius(
-            contract_path, violation_id,
-            result.get("records_failing", 0)
+        # Step 4: Build violation entry
+        print(f"  Step 4: Writing violation record...")
+        entry = write_violation(
+            result, reg_blast, lineage_enrichment,
+            blame_chain, run_timestamp, injected=injected
         )
-
-        violation = {
-            "violation_id": violation_id,
-            "check_id": check_id,
-            "detected_at": report.get("run_timestamp", datetime.now(timezone.utc).isoformat()),
-            "severity": result.get("severity", "CRITICAL"),
-            "message": result.get("message", ""),
-            "actual_value": result.get("actual_value", ""),
-            "expected": result.get("expected", ""),
-            "blame_chain": scored[:5],
-            "blast_radius": blast
-        }
-        violations.append(violation)
+        violations.append(entry)
+        print(f"    Violation {entry['violation_id'][:8]}... severity={entry['severity']}")
 
     return violations
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ViolationAttributor")
+    parser = argparse.ArgumentParser(description="ViolationAttributor (4-Step Pipeline)")
     parser.add_argument("--violation", required=True, help="Path to validation report JSON")
     parser.add_argument("--lineage", required=True, help="Path to lineage snapshots JSONL")
     parser.add_argument("--contract", required=True, help="Path to contract YAML")
+    parser.add_argument("--registry", default="contract_registry/subscriptions.yaml",
+                        help="Path to contract registry subscriptions YAML")
+    parser.add_argument("--injected", action="store_true",
+                        help="Mark violations as intentionally injected")
     parser.add_argument("--output", required=True, help="Output path for violations JSONL")
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
-    print(f"ViolationAttributor")
+    print(f"ViolationAttributor — 4-Step Pipeline")
     print(f"{'='*60}")
 
-    violations = attribute_violations(args.violation, args.lineage, args.contract)
+    violations = attribute_violations(
+        args.violation, args.lineage, args.contract,
+        args.registry, injected=args.injected
+    )
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Append to existing file
     with open(output_path, "a") as f:
         for v in violations:
             f.write(json.dumps(v) + "\n")
 
-    print(f"  Attributed {len(violations)} violations")
+    print(f"\n  Attributed {len(violations)} violations")
     for v in violations:
-        print(f"  📍 {v['check_id']}: {v['message']}")
+        src = v["blast_radius"]["source"]
+        subs = len(v["blast_radius"]["direct_subscribers"])
+        depth = v["blast_radius"]["contamination_depth"]
+        print(f"  {v['check_id']}: severity={v['severity']}, "
+              f"blast_radius.source={src}, subscribers={subs}, depth={depth}")
         if v["blame_chain"]:
             top = v["blame_chain"][0]
             print(f"     Top suspect: {top.get('author', 'unknown')} "
                   f"(commit {top.get('commit_hash', '?')[:8]}..., "
                   f"confidence={top.get('confidence_score', 0)})")
-        print(f"     Blast radius: {len(v['blast_radius']['affected_nodes'])} affected nodes, "
-              f"{v['blast_radius']['estimated_records']} records")
 
     print(f"\n  Violations appended to {output_path}")
     print(f"\n{'='*60}\n")

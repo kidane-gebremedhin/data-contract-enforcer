@@ -1,0 +1,152 @@
+version: 2
+models:
+- name: week5_event_records
+  description: dbt schema tests auto-generated from Bitol contract week5-event-records.
+    Requires dbt_expectations package for pattern and range tests.
+  columns:
+  - name: event_id
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - unique
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: event_type
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - accepted_values:
+        values:
+        - ApplicationSubmitted
+        - DocumentUploadRequested
+        - PackageCreated
+        - DocumentUploaded
+        - DocumentAdded
+        - AgentSessionStarted
+        - AgentInputValidated
+        - AgentNodeExecuted
+        - DocumentFormatValidated
+        - ExtractionStarted
+        - AgentToolCalled
+        - ExtractionCompleted
+        - QualityAssessmentCompleted
+        - PackageReadyForAnalysis
+        - AgentOutputWritten
+        - AgentSessionCompleted
+        - CreditAnalysisRequested
+        - CreditRecordOpened
+        - HistoricalProfileConsumed
+        - ExtractedFactsConsumed
+        - CreditAnalysisCompleted
+        - FraudScreeningRequested
+        - FraudScreeningInitiated
+        - FraudScreeningCompleted
+        - ComplianceCheckRequested
+        - ComplianceCheckInitiated
+        - ComplianceRulePassed
+        - ComplianceRuleNoted
+        - ComplianceCheckCompleted
+        - DecisionRequested
+        - DecisionGenerated
+        - ApplicationApproved
+        - ComplianceRuleFailed
+        - ApplicationDeclined
+  - name: aggregate_id
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - unique
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: aggregate_type
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - accepted_values:
+        values:
+        - LoanApplication
+        - Document
+        - AgentSession
+  - name: sequence_number
+    description: Numeric field. Observed range [1.0, 13.0], mean=5.34, stddev=3.24.
+    tests:
+    - not_null
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 13
+  - name: schema_version
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - accepted_values:
+        values:
+        - '1'
+        - '2'
+  - name: occurred_at
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}
+  - name: recorded_at
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}
+  - name: meta_causation_id
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - unique
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: meta_correlation_id
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - unique
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: meta_user_id
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - unique
+    - accepted_values:
+        values:
+        - COMP-074
+        - system
+        - COMP-041
+        - COMP-031
+        - COMP-015
+        - COMP-057
+        - COMP-044
+        - COMP-019
+        - COMP-078
+        - COMP-025
+        - COMP-014
+        - COMP-070
+        - COMP-058
+        - COMP-052
+        - COMP-020
+        - COMP-060
+        - COMP-063
+        - COMP-002
+        - COMP-080
+        - COMP-006
+        - COMP-048
+        - COMP-043
+        - COMP-042
+        - COMP-051
+        - COMP-018
+        - COMP-013
+        - COMP-075
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: meta_source_service
+    description: Auto-generated from contract week5-event-records
+    tests:
+    - not_null
+    - accepted_values:
+        values:
+        - week5-event-sourcing-platform

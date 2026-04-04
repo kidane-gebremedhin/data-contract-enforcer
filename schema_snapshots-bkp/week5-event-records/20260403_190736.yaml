@@ -1,0 +1,159 @@
+kind: DataContract
+apiVersion: v3.0.0
+id: week5-event-records
+info:
+  title: Week5 Event Records
+  version: 1.0.0
+  owner: week5-team
+  description: Auto-generated contract for week5-event-records. 1198 records profiled.
+servers:
+  local:
+    type: local
+    path: outputs/week5/events.jsonl
+    format: jsonl
+terms:
+  usage: Internal inter-system data contract. Do not publish.
+  limitations: confidence must remain in 0.0-1.0 float range.
+schema:
+  event_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+  event_type:
+    type: string
+    required: true
+    enum:
+    - ApplicationSubmitted
+    - DocumentUploadRequested
+    - PackageCreated
+    - DocumentUploaded
+    - DocumentAdded
+    - AgentSessionStarted
+    - AgentInputValidated
+    - AgentNodeExecuted
+    - DocumentFormatValidated
+    - ExtractionStarted
+    - AgentToolCalled
+    - ExtractionCompleted
+    - QualityAssessmentCompleted
+    - PackageReadyForAnalysis
+    - AgentOutputWritten
+    - AgentSessionCompleted
+    - CreditAnalysisRequested
+    - CreditRecordOpened
+    - HistoricalProfileConsumed
+    - ExtractedFactsConsumed
+    - CreditAnalysisCompleted
+    - FraudScreeningRequested
+    - FraudScreeningInitiated
+    - FraudScreeningCompleted
+    - ComplianceCheckRequested
+    - ComplianceCheckInitiated
+    - ComplianceRulePassed
+    - ComplianceRuleNoted
+    - ComplianceCheckCompleted
+    - DecisionRequested
+    - DecisionGenerated
+    - ApplicationApproved
+    - ComplianceRuleFailed
+    - ApplicationDeclined
+  aggregate_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+  aggregate_type:
+    type: string
+    required: true
+    enum:
+    - LoanApplication
+    - Document
+    - AgentSession
+  sequence_number:
+    type: integer
+    required: true
+    description: Numeric field. Observed range [1.00, 13.00], mean=5.34, stddev=3.24.
+  schema_version:
+    type: string
+    required: true
+    enum:
+    - '1'
+    - '2'
+  occurred_at:
+    type: string
+    required: true
+    format: date-time
+  recorded_at:
+    type: string
+    required: true
+    format: date-time
+  meta_causation_id:
+    type: string
+    required: false
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+    enum: []
+  meta_correlation_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+  meta_user_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+    enum:
+    - COMP-074
+    - system
+    - COMP-041
+    - COMP-031
+    - COMP-015
+    - COMP-057
+    - COMP-044
+    - COMP-019
+    - COMP-078
+    - COMP-025
+    - COMP-014
+    - COMP-070
+    - COMP-058
+    - COMP-052
+    - COMP-020
+    - COMP-060
+    - COMP-063
+    - COMP-002
+    - COMP-080
+    - COMP-006
+    - COMP-048
+    - COMP-043
+    - COMP-042
+    - COMP-051
+    - COMP-018
+    - COMP-013
+    - COMP-075
+  meta_source_service:
+    type: string
+    required: true
+    enum:
+    - week5-event-sourcing-platform
+quality:
+  type: SodaChecks
+  specification:
+    checks for week5-event-records:
+    - row_count >= 1
+    - missing_count(event_id) = 0
+    - missing_count(event_type) = 0
+    - missing_count(aggregate_id) = 0
+    - missing_count(aggregate_type) = 0
+    - missing_count(sequence_number) = 0
+lineage:
+  upstream: []
+  downstream: []
+  registry_subscribers:
+  - id: week7-enforcer
+    team: week7
+    breaking_fields:
+    - event_type
+    - sequence_number
+  note: Blast radius uses registry_subscribers as primary source.

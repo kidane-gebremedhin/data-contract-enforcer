@@ -1,0 +1,59 @@
+kind: DataContract
+apiVersion: v3.0.0
+id: week7-schema-snapshots
+info:
+  title: Week 7 Data Contract Enforcer — Schema Snapshots
+  version: 1.0.0
+  owner: week7-enforcer-team
+  description: >
+    Timestamped schema snapshots enabling evolution tracking.
+    Each snapshot is a full Bitol contract YAML captured at generation time.
+    Index file (schema_snapshots/index.jsonl) tracks all snapshots with SHA-256 hashes.
+servers:
+  local:
+    type: local
+    path: schema_snapshots/index.jsonl
+    format: jsonl
+terms:
+  usage: Internal schema evolution tracking. Consumed by Week 8 Sentinel.
+  limitations: schema_hash must be SHA-256 (64 hex characters).
+schema:
+  contract_id:
+    type: string
+    required: true
+    description: The contract this snapshot belongs to.
+  snapshot_timestamp:
+    type: string
+    format: date-time
+    required: true
+    description: ISO 8601 timestamp when snapshot was captured.
+  snapshot_path:
+    type: string
+    required: true
+    description: Relative path to the YAML snapshot file.
+  schema_hash:
+    type: string
+    pattern: "^[a-f0-9]{64}$"
+    required: true
+    description: SHA-256 of the schema section for quick diff detection.
+quality:
+  type: SodaChecks
+  specification:
+    checks for week7-schema-snapshots:
+    - row_count >= 1
+    - missing_count(contract_id) = 0
+    - missing_count(schema_hash) = 0
+lineage:
+  upstream:
+  - id: week7-enforcer
+    description: Produced by ContractGenerator snapshot discipline
+  downstream:
+  - id: week8-sentinel
+    description: Consumed for schema change detection alerts
+    fields_consumed: [contract_id, snapshot_timestamp, schema_hash]
+    breaking_if_changed: [schema_hash]
+  registry_subscribers:
+  - id: week8-sentinel
+    team: week8
+    breaking_fields: [schema_hash]
+  note: Blast radius uses registry_subscribers as primary source.

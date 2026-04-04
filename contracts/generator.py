@@ -172,11 +172,18 @@ def column_to_clause(profile):
             and len(profile["sample_values"]) == profile["cardinality_estimate"]):
         clause["enum"] = profile["sample_values"]
 
+    # Add observed range bounds for numeric columns without semantic ranges
+    if "stats" in profile and "minimum" not in clause and "maximum" not in clause:
+        s = profile["stats"]
+        if clause["type"] in ("integer", "number"):
+            clause["minimum"] = int(s["min"]) if clause["type"] == "integer" else s["min"]
+            clause["maximum"] = int(s["max"]) if clause["type"] == "integer" else s["max"]
+
     # Add stats-based description for numeric columns
     if "stats" in profile and "description" not in clause:
         s = profile["stats"]
         clause["description"] = (
-            f"Numeric field. Observed range [{s['min']:.2f}, {s['max']:.2f}], "
+            f"Numeric field. Observed range [{s['min']}, {s['max']}], "
             f"mean={s['mean']:.2f}, stddev={s['stddev']:.2f}."
         )
 
@@ -185,8 +192,8 @@ def column_to_clause(profile):
 
 # ── Stage 4: Inject lineage context and write YAML ──────────────────────
 
-def inject_lineage(contract, lineage_path, contract_id):
-    """Add lineage context from Week 4 lineage graph."""
+def inject_lineage(contract, lineage_path, contract_id, registry_path=None):
+    """Add lineage context from Week 4 lineage graph and contract registry."""
     try:
         with open(lineage_path) as f:
             lines = [l for l in f if l.strip()]
@@ -199,7 +206,7 @@ def inject_lineage(contract, lineage_path, contract_id):
                 week_key = w
                 break
 
-        # Find downstream consumers
+        # Find downstream consumers from lineage graph
         downstream = []
         if week_key:
             for edge in snapshot.get("edges", []):
@@ -219,6 +226,24 @@ def inject_lineage(contract, lineage_path, contract_id):
         }
     except Exception as e:
         contract["lineage"] = {"upstream": [], "downstream": [], "error": str(e)}
+
+    # Enrich with registry subscribers
+    registry_subscribers = []
+    if registry_path and Path(registry_path).exists():
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from contracts.registry import load_registry, get_subscribers
+        registry = load_registry(registry_path)
+        subs = get_subscribers(registry, contract_id)
+        for s in subs:
+            registry_subscribers.append({
+                "id": s["subscriber_id"],
+                "team": s.get("subscriber_team", "unknown"),
+                "breaking_fields": [bf["field"] for bf in s.get("breaking_fields", [])]
+            })
+    contract["lineage"]["registry_subscribers"] = registry_subscribers
+    if registry_subscribers:
+        contract["lineage"]["note"] = "Blast radius uses registry_subscribers as primary source."
 
     return contract
 
@@ -276,32 +301,93 @@ def build_contract(column_profiles, contract_id, source_path, records_count):
     return contract
 
 
-def generate_dbt_schema(column_profiles, contract_id):
-    """Generate dbt-compatible schema.yml."""
+def generate_dbt_schema(column_profiles, contract_id, schema_clauses):
+    """Generate dbt-compatible schema.yml with full contract clause mapping.
+
+    Maps all Bitol contract clauses to native dbt tests and dbt_expectations tests:
+    - required -> not_null
+    - unique -> unique
+    - enum -> accepted_values
+    - pattern -> dbt_expectations.expect_column_values_to_match_regex
+    - minimum/maximum -> dbt_expectations.expect_column_values_to_be_between
+    - format: date-time -> dbt_expectations.expect_column_values_to_match_regex (ISO 8601)
+    - format: uuid -> dbt_expectations.expect_column_values_to_match_regex (UUID v4)
+    """
     columns = []
     for col, profile in column_profiles.items():
+        clause = schema_clauses.get(col, {})
         tests = []
-        if profile["null_fraction"] == 0.0:
+
+        # Required -> not_null
+        if clause.get("required", False):
             tests.append("not_null")
-        if profile["cardinality_estimate"] == len(profile.get("sample_values", [])):
-            if profile["cardinality_estimate"] <= 10 and profile["dtype"] == "object":
-                tests.append({"accepted_values": {"values": profile["sample_values"]}})
-        if col.endswith("_id") or col in ("id", "doc_id"):
+
+        # Unique
+        if clause.get("unique", False) or col.endswith("_id") or col in ("id", "doc_id"):
             tests.append("unique")
 
-        columns.append({"name": col, "tests": tests} if tests else {"name": col})
+        # Enum -> accepted_values
+        if "enum" in clause and clause["enum"]:
+            tests.append({"accepted_values": {"values": clause["enum"]}})
+
+        # Pattern -> regex match
+        if "pattern" in clause:
+            tests.append({
+                "dbt_expectations.expect_column_values_to_match_regex": {
+                    "regex": clause["pattern"]
+                }
+            })
+
+        # Range -> between
+        if "minimum" in clause or "maximum" in clause:
+            between_config = {}
+            if "minimum" in clause:
+                between_config["min_value"] = clause["minimum"]
+            if "maximum" in clause:
+                between_config["max_value"] = clause["maximum"]
+            tests.append({
+                "dbt_expectations.expect_column_values_to_be_between": between_config
+            })
+
+        # Date-time format (only if no pattern already set)
+        if clause.get("format") == "date-time" and "pattern" not in clause:
+            tests.append({
+                "dbt_expectations.expect_column_values_to_match_regex": {
+                    "regex": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+                }
+            })
+
+        # UUID format (only if no pattern already set)
+        if clause.get("format") == "uuid" and "pattern" not in clause:
+            tests.append({
+                "dbt_expectations.expect_column_values_to_match_regex": {
+                    "regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+            })
+
+        col_entry = {
+            "name": col,
+            "description": clause.get("description", f"Auto-generated from contract {contract_id}")
+        }
+        if tests:
+            col_entry["tests"] = tests
+        columns.append(col_entry)
 
     return {
         "version": 2,
         "models": [{
             "name": contract_id.replace("-", "_"),
+            "description": (
+                f"dbt schema tests auto-generated from Bitol contract {contract_id}. "
+                f"Requires dbt_expectations package for pattern and range tests."
+            ),
             "columns": columns
         }]
     }
 
 
 def write_snapshot(contract, contract_id, output_dir):
-    """Write timestamped schema snapshot."""
+    """Write timestamped schema snapshot with SHA-256 hash and index entry."""
     snapshot_dir = Path("schema_snapshots") / contract_id
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -312,6 +398,22 @@ def write_snapshot(contract, contract_id, output_dir):
         shutil.copy(output_path, snapshot_path)
         print(f"  Schema snapshot saved to {snapshot_path}")
 
+    # Compute SHA-256 of the schema section for quick diff detection
+    schema_str = yaml.dump(contract.get("schema", {}), sort_keys=True)
+    schema_hash = hashlib.sha256(schema_str.encode()).hexdigest()
+
+    # Append to schema_snapshots/index.jsonl
+    index_path = Path("schema_snapshots") / "index.jsonl"
+    index_entry = {
+        "contract_id": contract_id,
+        "snapshot_timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "snapshot_path": str(snapshot_path),
+        "schema_hash": schema_hash
+    }
+    with open(index_path, "a") as f:
+        f.write(json.dumps(index_entry) + "\n")
+    print(f"  Schema index updated: {index_path} (hash: {schema_hash[:12]}...)")
+
 
 # ── Main ────────────────────────────────────────────────────────────────
 
@@ -320,6 +422,8 @@ def main():
     parser.add_argument("--source", required=True, help="Path to JSONL source file")
     parser.add_argument("--contract-id", required=True, help="Contract identifier")
     parser.add_argument("--lineage", default=None, help="Path to lineage snapshots JSONL")
+    parser.add_argument("--registry", default="contract_registry/subscriptions.yaml",
+                        help="Path to contract registry subscriptions YAML")
     parser.add_argument("--output", required=True, help="Output directory for contracts")
     args = parser.parse_args()
 
@@ -356,12 +460,13 @@ def main():
     print(f"\nStage 3: Generating Bitol YAML contract...")
     contract = build_contract(column_profiles, args.contract_id, args.source, len(records))
 
-    # Stage 4: Inject lineage + write
+    # Stage 4: Inject lineage + registry context
     if args.lineage:
         print(f"\nStage 4: Injecting lineage context from {args.lineage}...")
-        contract = inject_lineage(contract, args.lineage, args.contract_id)
+        contract = inject_lineage(contract, args.lineage, args.contract_id, args.registry)
         ds = contract.get("lineage", {}).get("downstream", [])
-        print(f"  Found {len(ds)} downstream consumers")
+        rs = contract.get("lineage", {}).get("registry_subscribers", [])
+        print(f"  Found {len(ds)} downstream consumers, {len(rs)} registry subscribers")
 
     # Write Bitol YAML
     safe_name = args.contract_id.replace("-", "_")
@@ -376,7 +481,8 @@ def main():
 
     # Stage 5: dbt output
     print(f"\nStage 5: Generating dbt schema.yml...")
-    dbt_schema = generate_dbt_schema(column_profiles, args.contract_id)
+    schema_clauses = contract.get("schema", {})
+    dbt_schema = generate_dbt_schema(column_profiles, args.contract_id, schema_clauses)
     dbt_path = output_dir / f"{safe_name}_dbt.yml"
     with open(dbt_path, "w") as f:
         yaml.dump(dbt_schema, f, default_flow_style=False, sort_keys=False)

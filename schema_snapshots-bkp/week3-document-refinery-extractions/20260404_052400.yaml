@@ -1,0 +1,114 @@
+kind: DataContract
+apiVersion: v3.0.0
+id: week3-document-refinery-extractions
+info:
+  title: Week3 Document Refinery Extractions
+  version: 1.0.0
+  owner: week3-team
+  description: Auto-generated contract for week3-document-refinery-extractions. 55
+    records profiled.
+servers:
+  local:
+    type: local
+    path: outputs/week3/extractions_violated.jsonl
+    format: jsonl
+terms:
+  usage: Internal inter-system data contract. Do not publish.
+  limitations: confidence must remain in 0.0-1.0 float range.
+schema:
+  doc_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+  source_path:
+    type: string
+    required: true
+  source_hash:
+    type: string
+    required: true
+    pattern: ^[a-f0-9]{64}$
+    description: SHA-256 hash.
+  extraction_model:
+    type: string
+    required: true
+    enum:
+    - claude-3-5-sonnet-20241022
+    - claude-3-haiku-20240307
+  processing_time_ms:
+    type: integer
+    required: true
+    minimum: 838
+    maximum: 2750
+    description: Numeric field. Observed range [838.0, 2750.0], mean=1821.99, stddev=529.11.
+  extracted_at:
+    type: string
+    required: true
+    format: date-time
+  fact_fact_id:
+    type: string
+    required: true
+    format: uuid
+    pattern: ^[0-9a-f-]{36}$
+  fact_text:
+    type: string
+    required: true
+  fact_confidence:
+    type: number
+    required: true
+    minimum: 0.0
+    maximum: 1.0
+    description: Confidence score. Must remain 0.0-1.0 float. BREAKING if changed
+      to 0-100.
+  fact_page_ref:
+    type: integer
+    required: true
+    minimum: 3
+    maximum: 19
+    description: Numeric field. Observed range [3.0, 19.0], mean=13.47, stddev=4.00.
+  fact_source_excerpt:
+    type: string
+    required: true
+quality:
+  type: SodaChecks
+  specification:
+    checks for week3-document-refinery-extractions:
+    - row_count >= 1
+    - missing_count(doc_id) = 0
+    - missing_count(source_path) = 0
+    - missing_count(source_hash) = 0
+    - missing_count(extraction_model) = 0
+    - missing_count(processing_time_ms) = 0
+    - min(fact_confidence) >= 70.0
+    - max(fact_confidence) <= 98.0
+lineage:
+  upstream: []
+  downstream:
+  - id: pipeline::week4
+    description: Consumes data from week3
+    fields_consumed:
+    - doc_id
+    - extracted_facts
+    breaking_if_changed:
+    - extracted_facts.confidence
+    - doc_id
+  - id: pipeline::week5
+    description: Consumes data from week3
+    fields_consumed:
+    - doc_id
+    - extracted_facts
+    breaking_if_changed:
+    - extracted_facts.confidence
+    - doc_id
+  registry_subscribers:
+  - id: week4-cartographer
+    team: week4
+    breaking_fields:
+    - extracted_facts.confidence
+    - doc_id
+  - id: week7-enforcer
+    team: week7
+    breaking_fields:
+    - extracted_facts.confidence
+    - extracted_facts.text
+  note: Blast radius uses registry_subscribers as primary source.

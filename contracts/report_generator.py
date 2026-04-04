@@ -116,28 +116,55 @@ def generate_report(reports_dir="validation_reports/", violations_dir="violation
                          f"{breaking} breaking, {total - breaking} compatible. "
                          f"Verdict: {schema_changes.get('overall_verdict', 'N/A')}")
 
-    # Build recommendations
+    # Build file-specific recommendations
     recommendations = []
     for f in top_3:
         col = f.get("column_name", "unknown")
         check_id = f.get("check_id", "")
+        contract_id = check_id.split(".")[0] if "." in check_id else "unknown"
+        safe_name = contract_id.replace("-", "_")
+        contract_file = f"generated_contracts/{safe_name}.yaml"
+        dbt_file = f"generated_contracts/{safe_name}_dbt.yml"
+
         if "confidence" in col and "range" in check_id:
             recommendations.append(
-                f"Update source pipeline to output {col} as float 0.0-1.0 per contract clause {check_id}")
+                f"[CRITICAL] Update source pipeline to output `{col}` as float 0.0-1.0. "
+                f"Contract clause: `{check_id}` in `{contract_file}`. "
+                f"Validate fix with: `python contracts/runner.py --contract {contract_file} "
+                f"--data <DATA_PATH> --mode ENFORCE --output validation_reports/fix_check.json`")
         elif "drift" in check_id:
             recommendations.append(
-                f"Investigate statistical drift in {col}. Re-establish baseline after confirming data correctness.")
+                f"[HIGH] Investigate statistical drift in `{col}`. "
+                f"Baseline: `schema_snapshots/baselines.json`. "
+                f"Re-establish after confirming data: delete baselines.json and re-run runner.")
+        elif "pattern" in f.get("check_type", ""):
+            recommendations.append(
+                f"[CRITICAL] Fix pattern violation in `{col}`: {f.get('message', '')}. "
+                f"Expected pattern in `{contract_file}` schema.{col}.pattern. "
+                f"dbt test: `{dbt_file}` dbt_expectations.expect_column_values_to_match_regex")
+        elif "enum" in f.get("check_type", ""):
+            recommendations.append(
+                f"[CRITICAL] Fix enum violation in `{col}`: {f.get('message', '')}. "
+                f"Allowed values defined in `{contract_file}` schema.{col}.enum. "
+                f"dbt test: `{dbt_file}` accepted_values")
         else:
             recommendations.append(
-                f"Fix {f.get('check_type', 'unknown')} violation in {col}: {f.get('message', '')}")
+                f"[{f.get('severity', 'MEDIUM')}] Fix {f.get('check_type', 'unknown')} "
+                f"violation in `{col}`: {f.get('message', '')}. "
+                f"See contract clause `{check_id}` in `{contract_file}`.")
 
     if not recommendations:
         recommendations = ["All contracts passing. Continue monitoring for drift."]
 
-    # Add general recommendations
+    # Add general recommendations with file references
     if total_by_severity.get("CRITICAL", 0) > 0:
-        recommendations.append("Add contract enforcement step to CI pipeline to prevent future CRITICAL violations.")
-    recommendations.append("Review schema evolution snapshots weekly to catch breaking changes early.")
+        recommendations.append(
+            "[ACTION] Add contract enforcement to CI: "
+            "`python contracts/runner.py --mode ENFORCE` to block deploys on CRITICAL violations.")
+    recommendations.append(
+        "[MAINTENANCE] Review schema evolution snapshots weekly: "
+        "`python contracts/schema_analyzer.py --contract-id <ID> --registry "
+        "contract_registry/subscriptions.yaml --output validation_reports/schema_evolution.json`")
     recommendations = recommendations[:5]
 
     now = datetime.now(timezone.utc)
