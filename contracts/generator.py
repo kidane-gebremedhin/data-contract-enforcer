@@ -251,8 +251,23 @@ def inject_lineage(contract, lineage_path, contract_id, registry_path=None):
 def build_contract(column_profiles, contract_id, source_path, records_count):
     """Build a full Bitol-compatible contract YAML."""
     schema = {}
+    fact_fields = {}
     for col, profile in column_profiles.items():
-        schema[col] = column_to_clause(profile)
+        clause = column_to_clause(profile)
+        if col.startswith("fact_"):
+            # Strip "fact_" prefix and nest under extracted_facts
+            short_name = col[len("fact_"):]
+            fact_fields[short_name] = clause
+        else:
+            schema[col] = clause
+
+    # Group fact_ fields under extracted_facts object
+    if fact_fields:
+        schema["extracted_facts"] = {
+            "type": "object",
+            "required": True,
+            "properties": fact_fields
+        }
 
     contract = {
         "kind": "DataContract",
@@ -282,15 +297,15 @@ def build_contract(column_profiles, contract_id, source_path, records_count):
                 f"checks for {contract_id}": [
                     f"row_count >= 1",
                 ] + [
-                    f"missing_count({col}) = 0"
+                    f"missing_count({col.replace('fact_', 'extracted_facts.') if col.startswith('fact_') else col}) = 0"
                     for col, p in column_profiles.items()
                     if p["null_fraction"] == 0.0
                 ][:5] + [
-                    f"min({col}) >= {p['stats']['min']:.1f}"
+                    f"min({col.replace('fact_', 'extracted_facts.') if col.startswith('fact_') else col}) >= {p['stats']['min']:.1f}"
                     for col, p in column_profiles.items()
                     if "stats" in p and "confidence" in col
                 ][:2] + [
-                    f"max({col}) <= {p['stats']['max']:.1f}"
+                    f"max({col.replace('fact_', 'extracted_facts.') if col.startswith('fact_') else col}) <= {p['stats']['max']:.1f}"
                     for col, p in column_profiles.items()
                     if "stats" in p and "confidence" in col
                 ][:2]
@@ -315,7 +330,12 @@ def generate_dbt_schema(column_profiles, contract_id, schema_clauses):
     """
     columns = []
     for col, profile in column_profiles.items():
-        clause = schema_clauses.get(col, {})
+        # For fact_ columns, look up clause from extracted_facts.properties
+        if col.startswith("fact_") and "extracted_facts" in schema_clauses:
+            short_name = col[len("fact_"):]
+            clause = schema_clauses["extracted_facts"].get("properties", {}).get(short_name, {})
+        else:
+            clause = schema_clauses.get(col, {})
         tests = []
 
         # Required -> not_null
@@ -365,9 +385,12 @@ def generate_dbt_schema(column_profiles, contract_id, schema_clauses):
                 }
             })
 
+        # Use nested path for fact_ columns in dbt
+        dbt_col_name = f"extracted_facts.{col[len('fact_'):]}" if col.startswith("fact_") else col
         col_entry = {
-            "name": col,
-            "description": clause.get("description", f"Auto-generated from contract {contract_id}")
+            "name": dbt_col_name,
+            "description": clause.get("description", f"Auto-generated from contract {contract_id}"),
+            "data_type": clause.get("type", "string"),
         }
         if tests:
             col_entry["tests"] = tests

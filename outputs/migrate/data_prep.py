@@ -7,9 +7,13 @@ import uuid
 import hashlib
 import random
 import string
+import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from collections import defaultdict
+
+import asyncpg
 
 random.seed(42)
 
@@ -17,9 +21,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUTPUTS = BASE_DIR / "outputs"
 
 # ── Source paths ──────────────────────────────────────────────────────────
-WEEK3_SOURCE = Path("/home/kg/Projects/10Academy/intelligent-rag/.refinery/extracted_facts.jsonl")
-WEEK5_SOURCE = Path("/home/kg/Projects/10Academy/apex-ledger-starter-project/data/seed_events.jsonl")
-WEEK4_SOURCE = Path("/home/kg/Projects/10Academy/brownfield-cartographer/cartography/cartography_trace.jsonl")
+WEEK3_SOURCE = Path("/home/kg/Projects/10Academy/document-intelligence-refinery/.refinery/extracted_facts.jsonl")
+WEEK5_DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ledger_test")
+WEEK4_SOURCE = Path("/home/kg/Projects/10Academy/brownfield-cartographer/.cartography/cartography_trace.jsonl")
 
 
 def uuid4():
@@ -130,10 +134,24 @@ def migrate_week3():
 # 2b. Week 5 — Event Sourcing Platform (event_record)
 # ═══════════════════════════════════════════════════════════════════════════
 
+async def _fetch_week5_events():
+    """Fetch events from the Week 5 agentic-ledger PostgreSQL database."""
+    conn = await asyncpg.connect(WEEK5_DB_URL)
+    try:
+        rows = await conn.fetch(
+            "SELECT event_id, stream_id, stream_position, event_type, "
+            "event_version, payload, metadata, recorded_at "
+            "FROM events ORDER BY global_position"
+        )
+        return [dict(r) for r in rows]
+    finally:
+        await conn.close()
+
+
 def migrate_week5():
-    print("\n── Migrating Week 5 (Event Sourcing) ──")
-    with open(WEEK5_SOURCE) as f:
-        raw = [json.loads(l) for l in f if l.strip()]
+    print("\n── Migrating Week 5 (Event Sourcing) from database ──")
+    raw = asyncio.run(_fetch_week5_events())
+    print(f"  Fetched {len(raw)} events from {WEEK5_DB_URL}")
 
     # Track sequence numbers per aggregate
     seq_counters = defaultdict(int)
@@ -143,7 +161,7 @@ def migrate_week5():
         stream_id = r["stream_id"]
         seq_counters[stream_id] += 1
 
-        recorded_at = r.get("recorded_at", iso_now())
+        recorded_at = r["recorded_at"].isoformat().replace("+00:00", "Z") if r.get("recorded_at") else iso_now()
         # occurred_at is slightly before recorded_at
         try:
             rec_dt = datetime.fromisoformat(recorded_at.replace("Z", "+00:00"))
@@ -162,17 +180,25 @@ def migrate_week5():
         else:
             agg_type = "Document"
 
+        payload = r.get("payload") or {}
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+
+        db_metadata = r.get("metadata") or {}
+        if isinstance(db_metadata, str):
+            db_metadata = json.loads(db_metadata)
+
         records.append({
-            "event_id": uuid4(),
+            "event_id": str(r.get("event_id", uuid4())),
             "event_type": r["event_type"],
-            "aggregate_id": uuid4() if not stream_id else stream_id,
+            "aggregate_id": stream_id or uuid4(),
             "aggregate_type": agg_type,
-            "sequence_number": seq_counters[stream_id],
-            "payload": r.get("payload", {}),
+            "sequence_number": r.get("stream_position") or seq_counters[stream_id],
+            "payload": payload,
             "metadata": {
-                "causation_id": None,
-                "correlation_id": uuid4(),
-                "user_id": r.get("payload", {}).get("applicant_id", "system"),
+                "causation_id": db_metadata.get("causation_id"),
+                "correlation_id": db_metadata.get("correlation_id", uuid4()),
+                "user_id": payload.get("applicant_id", db_metadata.get("user_id", "system")),
                 "source_service": "week5-event-sourcing-platform"
             },
             "schema_version": str(r.get("event_version", "1.0")),

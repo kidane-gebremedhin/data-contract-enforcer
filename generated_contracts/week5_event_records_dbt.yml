@@ -6,76 +6,77 @@ models:
   columns:
   - name: event_id
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - unique
+    - accepted_values:
+        values:
+        - 535c5a90-16af-4b19-8971-bd00dc9a4e37
+        - c6cedddd-d03b-471b-ae00-f63a4ef378bb
+        - 81a8f444-3196-4456-821b-7ff478b16980
+        - b26f9009-738b-4ec4-a21c-002b3046500a
+        - 79a08fe2-060f-4825-b0c6-917fe93773a9
+        - 2162d937-c3fe-4b4b-bb08-3698161f57fb
+        - 1103be2c-8121-45cb-8e89-53b27e4b8e8d
+        - 06405314-666a-4f0c-9298-0c06d091d425
+        - 41016921-d432-48ba-97f2-f54b795618bb
+        - 2bd86c80-f079-4162-bd75-2707f6842d18
+        - d84f5c22-d25d-43b3-a30d-2c13ce73f967
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^[0-9a-f-]{36}$
   - name: event_type
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - accepted_values:
         values:
+        - AgentContextLoaded
         - ApplicationSubmitted
-        - DocumentUploadRequested
-        - PackageCreated
-        - DocumentUploaded
-        - DocumentAdded
-        - AgentSessionStarted
-        - AgentInputValidated
-        - AgentNodeExecuted
-        - DocumentFormatValidated
-        - ExtractionStarted
-        - AgentToolCalled
-        - ExtractionCompleted
-        - QualityAssessmentCompleted
-        - PackageReadyForAnalysis
-        - AgentOutputWritten
-        - AgentSessionCompleted
         - CreditAnalysisRequested
-        - CreditRecordOpened
-        - HistoricalProfileConsumed
-        - ExtractedFactsConsumed
         - CreditAnalysisCompleted
-        - FraudScreeningRequested
-        - FraudScreeningInitiated
         - FraudScreeningCompleted
-        - ComplianceCheckRequested
-        - ComplianceCheckInitiated
         - ComplianceRulePassed
-        - ComplianceRuleNoted
-        - ComplianceCheckCompleted
-        - DecisionRequested
+        - AnalysisComplete
+        - ComplianceReviewCompleted
         - DecisionGenerated
+        - HumanReviewCompleted
         - ApplicationApproved
-        - ComplianceRuleFailed
-        - ApplicationDeclined
   - name: aggregate_id
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - unique
+    - accepted_values:
+        values:
+        - agent-agent-whatif-71e55438-4ff9-497f-86a9-e7b26d98bf89
+        - loan-ae408efd-7358-4eb2-b161-80efeb7baf6f
+        - compliance-ae408efd-7358-4eb2-b161-80efeb7baf6f
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^[0-9a-f-]{36}$
   - name: aggregate_type
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - accepted_values:
         values:
+        - AgentSession
         - LoanApplication
         - Document
-        - AgentSession
   - name: sequence_number
-    description: Numeric field. Observed range [1.0, 13.0], mean=5.34, stddev=3.24.
+    description: Numeric field. Observed range [1.0, 7.0], mean=3.18, stddev=2.09.
+    data_type: integer
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_be_between:
         min_value: 1
-        max_value: 13
+        max_value: 7
   - name: schema_version
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - accepted_values:
@@ -84,67 +85,91 @@ models:
         - '2'
   - name: occurred_at
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - '2026-04-04T18:48:36.446544Z'
+        - '2026-04-04T18:48:38.074378Z'
+        - '2026-04-04T18:48:37.919819Z'
+        - '2026-04-04T18:48:37.533350Z'
+        - '2026-04-04T18:48:37.708383Z'
+        - '2026-04-04T18:48:37.353415Z'
+        - '2026-04-04T18:48:36.784767Z'
+        - '2026-04-04T18:48:37.702973Z'
+        - '2026-04-04T18:48:37.574183Z'
+        - '2026-04-04T18:48:36.871307Z'
+        - '2026-04-04T18:48:37.039553Z'
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}
   - name: recorded_at
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
+    - accepted_values:
+        values:
+        - '2026-04-04T18:48:38.169544Z'
+        - '2026-04-04T18:48:38.209378Z'
+        - '2026-04-04T18:48:38.209819Z'
+        - '2026-04-04T18:48:38.235350Z'
+        - '2026-04-04T18:48:38.261383Z'
+        - '2026-04-04T18:48:38.281415Z'
+        - '2026-04-04T18:48:38.300767Z'
+        - '2026-04-04T18:48:38.300973Z'
+        - '2026-04-04T18:48:38.301183Z'
+        - '2026-04-04T18:48:38.330307Z'
+        - '2026-04-04T18:48:38.330553Z'
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}
   - name: meta_causation_id
     description: Auto-generated from contract week5-event-records
-    tests:
-    - unique
-    - dbt_expectations.expect_column_values_to_match_regex:
-        regex: ^[0-9a-f-]{36}$
-  - name: meta_correlation_id
-    description: Auto-generated from contract week5-event-records
-    tests:
-    - not_null
-    - unique
-    - dbt_expectations.expect_column_values_to_match_regex:
-        regex: ^[0-9a-f-]{36}$
-  - name: meta_user_id
-    description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - unique
     - accepted_values:
         values:
-        - COMP-074
+        - root
+        - w-start
+        - b26f9009-738b-4ec4-a21c-002b3046500a
+        - w-submit
+        - 41016921-d432-48ba-97f2-f54b795618bb
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: meta_correlation_id
+    description: Auto-generated from contract week5-event-records
+    data_type: string
+    tests:
+    - not_null
+    - unique
+    - accepted_values:
+        values:
+        - w-start
+        - w-submit
+        - w-credit
+        - w-fraud
+        - w-comp
+        - w-decision
+        - w-review
+    - dbt_expectations.expect_column_values_to_match_regex:
+        regex: ^[0-9a-f-]{36}$
+  - name: meta_user_id
+    description: Auto-generated from contract week5-event-records
+    data_type: string
+    tests:
+    - not_null
+    - unique
+    - accepted_values:
+        values:
         - system
-        - COMP-041
-        - COMP-031
-        - COMP-015
-        - COMP-057
-        - COMP-044
-        - COMP-019
-        - COMP-078
-        - COMP-025
-        - COMP-014
-        - COMP-070
-        - COMP-058
-        - COMP-052
-        - COMP-020
-        - COMP-060
-        - COMP-063
-        - COMP-002
-        - COMP-080
-        - COMP-006
-        - COMP-048
-        - COMP-043
-        - COMP-042
-        - COMP-051
-        - COMP-018
-        - COMP-013
-        - COMP-075
+        - app-w
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^[0-9a-f-]{36}$
   - name: meta_source_service
     description: Auto-generated from contract week5-event-records
+    data_type: string
     tests:
     - not_null
     - accepted_values:

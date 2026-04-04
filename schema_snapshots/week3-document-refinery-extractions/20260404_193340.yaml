@@ -38,33 +38,41 @@ schema:
   processing_time_ms:
     type: integer
     required: true
-    description: Numeric field. Observed range [838.00, 2750.00], mean=1821.99, stddev=529.11.
+    minimum: 838
+    maximum: 2750
+    description: Numeric field. Observed range [838.0, 2750.0], mean=1821.99, stddev=529.11.
   extracted_at:
     type: string
     required: true
     format: date-time
-  fact_fact_id:
-    type: string
+  extracted_facts:
+    type: object
     required: true
-    format: uuid
-    pattern: ^[0-9a-f-]{36}$
-  fact_text:
-    type: string
-    required: true
-  fact_confidence:
-    type: number
-    required: true
-    minimum: 0.0
-    maximum: 1.0
-    description: Confidence score. Must remain 0.0-1.0 float. BREAKING if changed
-      to 0-100.
-  fact_page_ref:
-    type: integer
-    required: true
-    description: Numeric field. Observed range [3.00, 19.00], mean=13.47, stddev=4.00.
-  fact_source_excerpt:
-    type: string
-    required: true
+    properties:
+      fact_id:
+        type: string
+        required: true
+        format: uuid
+        pattern: ^[0-9a-f-]{36}$
+      text:
+        type: string
+        required: true
+      confidence:
+        type: number
+        required: true
+        minimum: 0.0
+        maximum: 1.0
+        description: Confidence score. Must remain 0.0-1.0 float. BREAKING if changed
+          to 0-100.
+      page_ref:
+        type: integer
+        required: true
+        minimum: 3
+        maximum: 19
+        description: Numeric field. Observed range [3.0, 19.0], mean=13.47, stddev=4.00.
+      source_excerpt:
+        type: string
+        required: true
 quality:
   type: SodaChecks
   specification:
@@ -75,8 +83,8 @@ quality:
     - missing_count(source_hash) = 0
     - missing_count(extraction_model) = 0
     - missing_count(processing_time_ms) = 0
-    - min(fact_confidence) >= 0.7
-    - max(fact_confidence) <= 1.0
+    - min(extracted_facts.confidence) >= 0.7
+    - max(extracted_facts.confidence) <= 1.0
 lineage:
   upstream: []
   downstream:
@@ -96,3 +104,15 @@ lineage:
     breaking_if_changed:
     - extracted_facts.confidence
     - doc_id
+  registry_subscribers:
+  - id: week4-cartographer
+    team: week4
+    breaking_fields:
+    - extracted_facts.confidence
+    - doc_id
+  - id: week7-enforcer
+    team: week7
+    breaking_fields:
+    - extracted_facts.confidence
+    - extracted_facts.text
+  note: Blast radius uses registry_subscribers as primary source.

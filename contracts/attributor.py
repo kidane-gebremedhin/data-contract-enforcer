@@ -132,9 +132,7 @@ def get_recent_commits(file_path, days=14, repo_paths=None):
     """Run git log on the file and parse structured output."""
     search_dirs = repo_paths or [
         "/home/kg/Projects/10Academy/document-intelligence-refinery",
-        "/home/kg/Projects/10Academy/intelligent-rag",
         "/home/kg/Projects/10Academy/brownfield-cartographer",
-        "/home/kg/Projects/10Academy/apex-ledger-starter-project",
         "/home/kg/Projects/10Academy/agentic-ledger",
         "/home/kg/Projects/10Academy/automaton-auditor",
         ".",

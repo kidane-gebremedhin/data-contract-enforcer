@@ -371,38 +371,81 @@ def validate(contract_path, data_path):
             bl = json.load(f)
             baselines = bl.get("columns", {})
 
+    # Flatten nested object schemas (e.g., extracted_facts.properties) to
+    # match the flat DataFrame columns produced by flatten_for_validation.
+    # Also build a mapping from flat column name -> dot-notation display name.
+    flat_schema = {}
+    flat_to_dot = {}  # e.g. "fact_confidence" -> "extracted_facts.confidence"
+    NESTED_PREFIX_MAP = {
+        "extracted_facts": "fact_",
+        "metadata": "meta_",
+        "scores": "score_",
+    }
     for col_name, clause in schema.items():
+        if clause.get("type") == "object" and "properties" in clause:
+            prefix = NESTED_PREFIX_MAP.get(col_name, f"{col_name}_")
+            for prop_name, prop_clause in clause["properties"].items():
+                flat_col = f"{prefix}{prop_name}"
+                flat_schema[flat_col] = prop_clause
+                flat_to_dot[flat_col] = f"{col_name}.{prop_name}"
+        else:
+            flat_schema[col_name] = clause
+
+    for col_name, clause in flat_schema.items():
+        display_name = flat_to_dot.get(col_name, col_name)
+
         # Required check
         if clause.get("required", False):
-            results.append(check_required(df, col_name, contract_id))
+            r = check_required(df, col_name, contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
         # Type check
         if "type" in clause:
-            results.append(check_type(df, col_name, clause["type"], contract_id))
+            r = check_type(df, col_name, clause["type"], contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
         # Range check
         if "minimum" in clause or "maximum" in clause:
             minimum = clause.get("minimum", float("-inf"))
             maximum = clause.get("maximum", float("inf"))
-            results.append(check_range(df, col_name, minimum, maximum, contract_id))
+            r = check_range(df, col_name, minimum, maximum, contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
         # Enum check
         if "enum" in clause:
-            results.append(check_enum(df, col_name, clause["enum"], contract_id))
+            r = check_enum(df, col_name, clause["enum"], contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
         # Pattern check
         if "pattern" in clause:
-            results.append(check_pattern(df, col_name, clause["pattern"], contract_id))
+            r = check_pattern(df, col_name, clause["pattern"], contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
         # Date-time check
         if clause.get("format") == "date-time":
-            results.append(check_datetime(df, col_name, contract_id))
+            r = check_datetime(df, col_name, contract_id)
+            r["check_id"] = r["check_id"].replace(col_name, display_name)
+            r["column_name"] = display_name
+            results.append(r)
 
     # Statistical drift checks for numeric columns
     for col in df.select_dtypes(include="number").columns:
-        if col in baselines:
+        # Look up baseline using dot-notation name if available
+        display_col = flat_to_dot.get(col, col)
+        baseline_key = display_col if display_col in baselines else col
+        if baseline_key in baselines:
             drift = check_statistical_drift(
-                col, float(df[col].mean()), float(df[col].std()),
+                baseline_key, float(df[col].mean()), float(df[col].std()),
                 baselines, contract_id
             )
             if drift:

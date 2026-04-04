@@ -6,6 +6,7 @@ models:
   columns:
   - name: doc_id
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
     - unique
@@ -13,16 +14,19 @@ models:
         regex: ^[0-9a-f-]{36}$
   - name: source_path
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
   - name: source_hash
     description: SHA-256 hash.
+    data_type: string
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^[a-f0-9]{64}$
   - name: extraction_model
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
     - accepted_values:
@@ -31,6 +35,7 @@ models:
         - claude-3-haiku-20240307
   - name: processing_time_ms
     description: Numeric field. Observed range [838.0, 2750.0], mean=1821.99, stddev=529.11.
+    data_type: integer
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_be_between:
@@ -38,37 +43,43 @@ models:
         max_value: 2750
   - name: extracted_at
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}
-  - name: fact_fact_id
+  - name: extracted_facts.fact_id
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
     - unique
     - dbt_expectations.expect_column_values_to_match_regex:
         regex: ^[0-9a-f-]{36}$
-  - name: fact_text
+  - name: extracted_facts.text
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
-  - name: fact_confidence
+  - name: extracted_facts.confidence
     description: Confidence score. Must remain 0.0-1.0 float. BREAKING if changed
       to 0-100.
+    data_type: number
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_be_between:
         min_value: 0.0
         max_value: 1.0
-  - name: fact_page_ref
+  - name: extracted_facts.page_ref
     description: Numeric field. Observed range [3.0, 19.0], mean=13.47, stddev=4.00.
+    data_type: integer
     tests:
     - not_null
     - dbt_expectations.expect_column_values_to_be_between:
         min_value: 3
         max_value: 19
-  - name: fact_source_excerpt
+  - name: extracted_facts.source_excerpt
     description: Auto-generated from contract week3-document-refinery-extractions
+    data_type: string
     tests:
     - not_null
